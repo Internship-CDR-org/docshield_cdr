@@ -1,4 +1,5 @@
 package parsing.pptx;
+import parsing.ooxml.OOXMLPackageReader;
 
 import model.ooxml.OOXMLPackage;
 

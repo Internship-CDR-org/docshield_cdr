@@ -83,6 +83,28 @@ public class CDRResult {
     }
 
 
+    /**
+     * Returns true when any finding is a blocking security result.
+     * Policy violations are blocking as well as confirmed threats.
+     */
+    public boolean hasBlockingFindings() {
+
+        for (SecurityFinding finding : findings) {
+
+            if (finding != null &&
+                    (finding.getClassification() ==
+                            threat.common.FindingClassification.THREAT
+                    || finding.getClassification() ==
+                            threat.common.FindingClassification.POLICY_VIOLATION)) {
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+
     public boolean isThreatRemoved() {
         return threatsRemoved;
     }

@@ -4,10 +4,12 @@ import model.ooxml.OOXMLPackage;
 import model.ooxml.OOXMLPart;
 import model.ooxml.OOXMLRelationship;
 import org.junit.jupiter.api.Test;
+import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import sanitization.common.OOXMLThreatSanitizer;
 import threat.common.SecurityFinding;
 import threat.common.ThreatType;
 
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
@@ -25,6 +27,15 @@ class PPTXSecuritySurfaceTest {
         pkg.addPart(new OOXMLPart("ppt/slides/slide1.xml", "application/xml", xml.getBytes(StandardCharsets.UTF_8)));
         pkg.addPart(new OOXMLPart("[Content_Types].xml", "application/xml", "<Types/>".getBytes(StandardCharsets.UTF_8)));
         return pkg;
+    }
+
+    private byte[] createSafeOleObject() throws Exception {
+        try (POIFSFileSystem fs = new POIFSFileSystem();
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+
+            fs.writeFilesystem(output);
+            return output.toByteArray();
+        }
     }
 
     @Test
@@ -81,10 +92,10 @@ class PPTXSecuritySurfaceTest {
         assertFalse(cleaned.toLowerCase().contains("ppaction://ole"));
     }
     @Test
-    void preservesObservedEmbeddedObjectWhenNoActiveThreatIsPresent() {
+    void preservesObservedEmbeddedObjectWhenNoActiveThreatIsPresent() throws Exception {
         OOXMLPackage pkg = packageWithXml("<p:sld xmlns:p=\"p\"/>");
         pkg.addPart(new OOXMLPart("ppt/embeddings/oleObject1.bin",
-                "application/vnd.ms-office.oleObject", new byte[]{1,2,3}));
+                "application/vnd.ms-office.oleObject", createSafeOleObject()));
 
         List<SecurityFinding> findings = new PPTXThreatAnalyzer().analyze(pkg);
         assertTrue(findings.stream().anyMatch(f -> f.getType() == ThreatType.OLE_OBJECT));

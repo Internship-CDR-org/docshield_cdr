@@ -193,5 +193,29 @@ public enum ThreatType {
     PATH_TRAVERSAL,
 
 
-    EMBEDDED_ACTIVE_CONTENT
+    EMBEDDED_ACTIVE_CONTENT,
+
+    /** PDF JavaScript or script-bearing action/content. */
+    PDF_JAVASCRIPT,
+
+    /** PDF action capable of launching, importing, submitting, or remotely navigating. */
+    PDF_ACTIVE_ACTION,
+
+    /** PDF embedded file/attachment payload. */
+    PDF_EMBEDDED_FILE,
+
+    /** PDF XFA form content. */
+    PDF_XFA,
+
+    /** PDF RichMedia / 3D / multimedia active content. */
+    PDF_RICH_MEDIA,
+
+    /** PDF traversal/parser safety budget was exceeded; inspection is incomplete. */
+    PDF_RESOURCE_LIMIT,
+
+    /** PDF digital signature that will not remain valid after CDR reconstruction. */
+    PDF_SIGNATURE,
+
+    /** PDF encryption that cannot be safely preserved through CDR. */
+    PDF_ENCRYPTION
 }

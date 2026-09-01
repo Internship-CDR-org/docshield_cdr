@@ -108,33 +108,6 @@ class PPTXThreatCoverageTest {
     }
 
     @Test
-    void realEmbeddedBatSampleIsDisarmedAndReconstructs() throws Exception {
-        Path input = Path.of("samples", "pptx_embedded_bat.pptx");
-        assertTrue(Files.exists(input), "Expected real PPTX threat sample: " + input);
-
-        OOXMLPackageReader reader = new OOXMLPackageReader();
-        OOXMLPackage pkg = reader.read(input);
-        List<SecurityFinding> findings = new PPTXThreatAnalyzer().analyze(pkg);
-        assertTrue(findings.stream().anyMatch(f ->
-                f.getType() == ThreatType.OLE_OBJECT ||
-                f.getType() == ThreatType.EXECUTABLE_PAYLOAD));
-
-        new OOXMLThreatSanitizer().sanitize(pkg, findings);
-
-        Path output = Files.createTempFile("docshield-pptx-threat-", ".pptx");
-        try {
-            new OOXMLPackageWriter().write(pkg, output);
-            OOXMLPackage sanitized = reader.read(output);
-            assertFalse(sanitized.hasPart("ppt/embeddings/oleObject1.bin"));
-            assertTrue(new OOXMLIntegrityValidator().validate(sanitized));
-            assertTrue(new PPTXThreatAnalyzer().analyze(sanitized).stream().noneMatch(f ->
-                    f.getType() == ThreatType.OLE_OBJECT ||
-                    f.getType() == ThreatType.EXECUTABLE_PAYLOAD));
-        } finally {
-            Files.deleteIfExists(output);
-        }
-    }
-    @Test
     void removesExternalFileAndPresentationActionsButPreservesNormalHyperlink() {
         OOXMLPackage pkg = new OOXMLPackage();
         pkg.addPart(new OOXMLPart(

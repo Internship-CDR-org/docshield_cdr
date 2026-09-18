@@ -6,7 +6,7 @@ import parsing.ooxml.OOXMLPackageReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-public class OOXMLPackagePPTXRoundTripTest {
+public class OOXMLPackageRoundTripTest {
 
     public static void main(String[] args) {
 

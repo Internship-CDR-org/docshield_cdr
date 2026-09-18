@@ -1,44 +1,40 @@
-# Generic OOXML Package Reader Subsystem (`parsing.ooxml`)
+# Secure OOXML Package Reader (`parsing.ooxml`)
 
-This package is responsible for reading Open Packaging Convention (OPC) / Office Open XML (OOXML) file packages at the zip container level.
+The `parsing.ooxml` package provides the secure Open Packaging Conventions (OPC / OOXML) archive ingestion engine used across `DOCX`, `PPTX`, `XLSX`, and nested embedded packages.
 
-## 1. Purpose
-The purpose of the `parsing.ooxml` directory is to provide a generic, format-independent parser (`OOXMLPackageReader`) that unzips modern Office files and constructs the basic `OOXMLPackage` physical structure. It reads files, overrides/default content type mappings, and parses relationships securely, protecting the engine from XML Entity vulnerabilities.
+---
 
-## 2. Files in this Directory
-| File | Responsibility | Important Classes/Interfaces/Enums |
-| :--- | :--- | :--- |
-| `OOXMLPackageReader.java` | Main class that reads files from the zip stream, extracts content types, and processes relationships. | `OOXMLPackageReader` |
+## 1. Architectural Purpose
 
-## 3. How the Directory Fits into DocShield
-- This is the standard physical package parser used in the processing layer for DOCX and XLSX documents.
-- `DOCXCDRProcessor` and `XLSXCDRProcessor` call `OOXMLPackageReader.read(file)` to load raw zip streams before sanitizing individual parts.
+Modern Microsoft Office documents are ZIP archives containing XML parts, binary resources, relationship graphs (`.rels`), and a root content type registry (`[Content_Types].xml`). Ingesting untrusted ZIP packages directly with standard libraries exposes the host to ZIP bombs, directory traversal overwrites (Zip Slip), XML External Entity (XXE) attacks, and duplicate entry confusion.
 
-```
-       Input DOCX / XLSX File
-                 │
-                 ▼
-         OOXMLPackageReader
-          ├─► Scans zip entries and extracts raw byte data
-          ├─► Parses [Content_Types].xml (MIME overrides)
-          └─► Parses .rels relationship files (XXE-secured XML parsing)
-                 │
-                 ▼
-            OOXMLPackage ──► Threat Sanitizer
-```
+[`OOXMLPackageReader`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/parsing/ooxml/OOXMLPackageReader.java) implements a hardened, stream-verified reader that builds an in-memory [`OOXMLPackage`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/model/ooxml/OOXMLPackage.java) data structure under strict resource and safety constraints.
 
-## 4. Dependencies
-- `model.ooxml`
+---
 
-## 5. External Libraries / APIs
-- **Java XML DOM APIs (`javax.xml.parsers.DocumentBuilderFactory`)**: Reads package descriptors (`[Content_Types].xml` and relationship files `.rels`).
-- **Java ZIP APIs (`java.util.zip.ZipFile`)**: Accesses ZIP file structures directly.
+## 2. Configured Resource Limits & Security Bounds
 
-## 6. Important Design Decisions
-- **Unified XML Parsing Protections (XXE)**: To prevent XML External Entity injection (XXE) and XML Entity Expansion attacks (Billion Laughs), the XML parsing helper enforces:
-  - `disallow-doctype-decl` = `true` (disallows DOCTYPE declarations).
-  - `external-general-entities` = `false` (disables external general entities).
-  - `external-parameter-entities` = `false` (disables external parameter entities).
-  - `xincludeAware` = `false` (disables XInclude).
-  - `expandEntityReferences` = `false` (disables entity expansion).
-- **Target Part Resolution**: Maps relative relationship targets back to their parent files (e.g. converting `ppt/slides/_rels/slide1.xml.rels` destination `../drawings/drawing1.xml` to `ppt/drawings/drawing1.xml`).
+| Control | Constant | Exact Limit | Threat Neutralized |
+|---|---|---|---|
+| **Max ZIP Entries** | `MAX_ZIP_ENTRIES` | `10,000` entries | ZIP entry inflation / denial of service |
+| **Max Uncompressed Bytes** | `MAX_TOTAL_UNCOMPRESSED_BYTES` | `256 MB` (`268,435,456` bytes) | Archive decompression bombs |
+| **Max Single Part Size** | `MAX_SINGLE_PART_BYTES` | `128 MB` (`134,217,728` bytes) | Single-stream memory exhaustion |
+
+---
+
+## 3. Structural Protections in `OOXMLPackageReader`
+
+1. **Path Safety & Traversal Prevention**:
+   - Every ZIP entry name is verified through [`PathSandbox.isSafeZipEntryName`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/security/sandbox/PathSandbox.java).
+   - Rejects entries with path traversal tokens (`..`), leading slashes (`/`), drive prefixes (`C:`), Windows backslashes (`\`), or null bytes (`\0`).
+2. **Duplicate Entry Rejection**:
+   - Tracks seen entry names (normalized case-insensitively).
+   - Throws an `IOException` if duplicate ZIP entries are detected, eliminating ZIP parser differential attacks.
+3. **Hardened XML Deserialization**:
+   - All relationship files (`.rels`) and `[Content_Types].xml` are parsed using [`SecureXmlFactory`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/security/sandbox/SecureXmlFactory.java) `DocumentBuilderFactory`.
+   - `DOCTYPE` declarations are disallowed (`disallow-doctype-decl = true`).
+   - External entities and DTDs are disabled (`external-general-entities = false`, `external-parameter-entities = false`).
+   - XInclude and entity expansion are disabled.
+4. **Relationship Target Normalization**:
+   - Normalizes relative relationship targets against the owning source part (e.g., `../media/image1.png` relative to `word/document.xml` resolves to `word/media/image1.png`).
+   - Validates that internal relationship targets do not escape the package root.

@@ -1,40 +1,87 @@
 # CDR Processing Subsystem (`processing`)
 
-This parent directory contains classes responsible for driving the Content Disarm and Reconstruction (CDR) process on documents.
+The `processing` package orchestrates the end-to-end Content Disarm and Reconstruction (CDR) lifecycle across all supported document formats.
 
-## 1. Purpose
-The purpose of the `processing` directory is to define the workflow orchestration for disarming and reconstructing packages. Subdirectories contain format-specific processors that sequence threat detection, object sanitization, file reconstruction, and post-reconstruction integrity validation.
+---
 
-## 2. Directory Structure and Responsibilities
-| Subdirectory | Responsibility |
-| :--- | :--- |
-| [`common`](file:///d:/CAIR%20DOC%20SHIELD/DocShield/cdr/src/main/java/processing/common/README.md) | Defines the main `CDRProcessor` interface and `CDRResult` state container. |
-| [`docx`](file:///d:/CAIR%20DOC%20SHIELD/DocShield/cdr/src/main/java/processing/docx/README.md) | Coordinates the CDR flow for DOCX Word documents. |
-| [`pptx`](file:///d:/CAIR%20DOC%20SHIELD/DocShield/cdr/src/main/java/processing/pptx/README.md) | Coordinates the CDR flow for PPTX PowerPoint presentations. |
-| [`xlsx`](file:///d:/CAIR%20DOC%20SHIELD/DocShield/cdr/src/main/java/processing/xlsx/README.md) | Coordinates the CDR flow for XLSX Excel spreadsheets. |
+## 1. Architectural Purpose
 
-## 3. How the Directory Fits into DocShield
-- `Main` delegates the execution of disarming to a format-specific `CDRProcessor` retrieved based on the file format.
-- The processor returns a `CDRResult` which is used to output a summary to the console and write the final disarming report.
+The processing layer translates raw input files into safe, verified output artifacts. It coordinates:
+1. Pre-sanitization threat analysis.
+2. Capability disarming and sanitization.
+3. Physical reconstruction or serialization.
+4. Bounded post-reconstruction hardening loops.
+5. Structural integrity validation and security re-analysis.
+6. Clean copy optimization with SHA-256 byte-for-byte identity preservation when inputs are clean.
+
+---
+
+## 2. Directory Structure and Subsystem Map
 
 ```
-       Main.java
-          │
-          ▼ (Invokes process())
-     CDRProcessor (e.g., DOCXCDRProcessor)
-          │
-          ├─► Parse zip package into memory representation
-          ├─► Run Threat Analyzer (find vulnerabilities)
-          ├─► Run Threat Sanitizer (strip threats)
-          ├─► Run Reconstruction Writer (write new package)
-          └─► Run Integrity Validator (verify zip structure)
-          │
-          ▼ (Returns)
-      CDRResult ──► ReportWriter (Writes CDR Report)
+processing/
+├── README.md                      # This architectural document
+├── common/                        # Shared contracts, result models, console reporting, and file utilities
+│   ├── README.md
+│   ├── CDRProcessor.java          # Core execution interface
+│   ├── CDRResult.java             # Immutable outcome and telemetry model
+│   ├── CDRConsoleReporter.java    # Standardized console logging
+│   └── CDRFileUtil.java           # SHA-256 calculation and clean-copy utilities
+├── docx/                          # DOCX pipeline orchestrator
+│   └── DOCXCDRProcessor.java
+├── pptx/                          # PPTX pipeline orchestrator
+│   └── PPTXCDRProcessor.java
+├── xlsx/                          # XLSX pipeline orchestrator
+│   └── XLSXCDRProcessor.java
+├── doc/                           # Legacy DOC -> sandboxed conversion -> DOCX CDR
+│   └── DOCCDRProcessor.java
+├── ppt/                           # Legacy PPT -> sandboxed conversion -> PPTX CDR
+│   └── PPTCDRProcessor.java
+├── xls/                           # Legacy XLS -> sandboxed conversion -> XLSX CDR
+│   └── XLSCDRProcessor.java
+└── pdf/                           # Multi-pass PDF disarmer & verifier
+    └── PDFCDRProcessor.java
 ```
 
-## 4. Dependencies
-- `threat.common`
-- `sanitization` (format-specific)
-- `reconstruction`
-- `validation`
+---
+
+## 3. High-Level Processing Lifecycle
+
+```
+                    Input File Path
+                          │
+                          ▼
+            Format Identification & Routing
+                          │
+         ┌────────────────┴────────────────┐
+         ▼                                 ▼
+   Modern Formats                    Legacy Formats
+  (DOCX, PPTX, XLSX, PDF)            (DOC, PPT, XLS)
+         │                                 │
+         │                        1. Pre-Conversion Analysis
+         │                           (inspect legacy binary)
+         │                                 │
+         │                        2. Sandboxed Conversion
+         │                           (LibreOffice in SubprocessSandbox)
+         │                                 │
+         ▼                                 ▼
+  Threat Analysis ◄────────────── Converted Modern OOXML
+         │
+         ├─► Clean? ────► Copy Original (Exact SHA-256) ──► PASS
+         │
+         ▼ (Actionable Findings)
+   Sanitization & Disarming
+         │
+   Reconstruction / Serialization
+         │
+   Post-Reconstruction Loop (Up to 3 passes)
+         │
+         ├─► Structural Integrity Validation (validation.*)
+         ├─► Security Re-analysis (threat.*)
+         └─► Embedded Content Inspection
+         │
+         ▼
+   Final Gate: Both Passed? 
+         ├── YES ──► Output Released (exit 0)
+         └── NO  ──► Output Deleted + Quarantine (exit 2)
+```

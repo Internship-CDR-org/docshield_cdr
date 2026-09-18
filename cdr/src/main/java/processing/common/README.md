@@ -1,47 +1,42 @@
-# Common Processing Infrastructure (`processing.common`)
+# Common Processing Subsystem (`processing.common`)
 
-This package defines the standard interface and execution result types for the Content Disarm and Reconstruction pipeline.
+The `processing.common` package defines the core execution contracts, immutable result records, telemetry models, and low-level file utilities for the DocShield CDR engine.
 
-## 1. Purpose
-The purpose of the `processing.common` directory is to establish a uniform execution contract (`CDRProcessor`) and output container (`CDRResult`) for the DocShield CDR pipeline. This allows the system orchestrator (`Main`) to process different document formats using a consistent interface.
+---
 
-## 2. Files in this Directory
-| File | Responsibility | Important Classes/Interfaces/Enums |
-| :--- | :--- | :--- |
-| `CDRProcessor.java` | Interface defining the core `process()` method for disarming and reconstructing documents. | `CDRProcessor` (interface) |
-| `CDRResult.java` | Standard result class containing findings, actions, output path, reconstruction success, integrity status, and threat counts. | `CDRResult` |
+## 1. Core Classes & Responsibilities
 
-## 3. How the Directory Fits into DocShield
-- `Main` holds references to `CDRProcessor` implementations (`DOCXCDRProcessor`, `PPTXCDRProcessor`, `XLSXCDRProcessor`).
-- Running `process(input, output)` triggers format-specific analyzer, sanitizer, writer, and validator chains.
-- The returned `CDRResult` is processed by `Main` to print a terminal summary and is saved to disk via `ReportWriter`.
-
-```
-                  Main.java
-                      │
-                      ▼ (Executes process())
-              CDRProcessor (DOCX, PPTX, XLSX)
-                      │
-                      ▼ (Produces)
-              CDRResult
-                      │
-                      ├─► Main.java (Prints CLI summary)
-                      └─► ReportWriter (Generates CDR Report)
+### `CDRProcessor` (Interface)
+Contract implemented by all format-specific processors:
+```java
+public interface CDRProcessor {
+    CDRResult process(Path inputFile, Path outputFile) throws Exception;
+}
 ```
 
-## 4. Dependencies
-- `threat.common` (for `SecurityFinding` and `ThreatSeverity` mappings)
+### `CDRResult` (Result Model)
+Immutable data container capturing complete processing state:
+- **`findings`**: List of initial [`SecurityFinding`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/common/SecurityFinding.java) objects discovered during first-pass analysis.
+- **`actions`**: List of human-readable disarming and sanitization actions performed.
+- **`outputFile`**: Final path to the generated output file.
+- **`reconstructionSuccessful`**: Boolean flag confirming physical file generation.
+- **`integrityPassed`**: Boolean flag confirming structural validation passed.
+- **`threatsRemoved`**: Boolean flag confirming all actionable threats were eliminated and verified absent.
+- **`finalFindings`**: List of residual findings discovered on the re-read output file.
+- **`inputSha256`**: SHA-256 hash of the input file before processing.
+- **`outputSha256`**: SHA-256 hash of the output file after processing.
+- **`cleanCopy`**: Boolean flag indicating whether the file was clean and copied directly without reconstruction.
 
-## 5. External Libraries / APIs
-None. Standard JDK libraries only (`java.nio.file.Path`, `java.util.List`, etc.).
+#### Key Query Methods on `CDRResult`
+- `hasBlockingFindings()`: Returns `true` if any initial finding has classification `THREAT`, `POLICY_VIOLATION`, or `SUSPICIOUS`.
+- `hasRemainingBlockingFindings()`: Returns `true` if any final re-analysis finding remains blocking.
+- `isOutputReady()`: Confirms `outputFile` exists and has non-zero length on disk.
+- `isSafeToRelease()`: Convenience method asserting `isOutputReady() && isIntegrityPassed() && isThreatRemoved() && !hasRemainingBlockingFindings()`.
 
-## 6. Important Classes and Responsibilities
-### `CDRResult`
-- **Findings Registry**: Holds a list of discovered `SecurityFinding` objects.
-- **Actions Registry**: Tracks the changes made to the file (e.g. "Removed embedded object: word/embeddings/oleObject1.bin").
-- **Highest Severity**: Scans registered findings and returns the highest severity classification (`INFO`, `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`).
-- **Threat Summary**: Returns a comma-separated summary string listing all detected threat categories (e.g., "OLE_OBJECT, MACRO").
-- **Status Flags**: Houses logical state flags representing pipeline stages:
-  - `reconstructionSuccessful`: Confirms if the reconstructed ZIP structure was written.
-  - `integrityPassed`: Confirms if the reconstructed file passed structural validation checks.
-  - `threatsRemoved`: Confirms if sanitization successfully stripped all identified findings.
+### `CDRConsoleReporter`
+Static utility providing uniform CLI output formatting for analyzer findings and final post-CDR verification results.
+
+### `CDRFileUtil`
+Static file utility providing:
+- **`sha256(Path file)`**: Computes the hexadecimal SHA-256 hash of any file using `MessageDigest.getInstance("SHA-256")`.
+- **`copyOriginal(Path src, Path dst)`**: Atomically copies a clean input file to the destination path, creating parent directories if needed, and setting standard copy options (`REPLACE_EXISTING`, `COPY_ATTRIBUTES`).

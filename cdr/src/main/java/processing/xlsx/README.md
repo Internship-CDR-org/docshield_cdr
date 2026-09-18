@@ -1,47 +1,28 @@
-# XLSX Processing Subsystem (`processing.xlsx`)
+# XLSX Processing Pipeline (`processing.xlsx`)
 
-This package is responsible for driving the Content Disarm and Reconstruction process for XLSX spreadsheet files.
+The `processing.xlsx` package contains the pipeline driver for Microsoft Excel workbooks.
 
-## 1. Purpose
-The purpose of the `processing.xlsx` directory is to coordinate the complete CDR pipeline for modern Excel files (`.xlsx`). It coordinates spreadsheet package loading, runs threat identification analysis, sanitizes active content, writes the disarmed workbook zip package, and verifies file integrity.
+---
 
-## 2. Files in this Directory
-| File | Responsibility | Important Classes/Interfaces/Enums |
-| :--- | :--- | :--- |
-| `XLSXCDRProcessor.java` | Main class implementing the `CDRProcessor` interface. Coordinates package reading, analyzing, sanitizing, reconstructing, and validating for XLSX spreadsheet files. | `XLSXCDRProcessor` |
+## 1. Pipeline Execution Flow (`XLSXCDRProcessor`)
 
-## 3. How the Directory Fits into DocShield
-- `Main` invokes `XLSXCDRProcessor` when the detected format is `XLSX`.
-- The processor runs the standard package-level pipeline phases:
+[`XLSXCDRProcessor`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/processing/xlsx/XLSXCDRProcessor.java) executes the following sequence:
 
-```
-  Input XLSX Path ──► [OOXMLPackageReader] ──► OOXMLPackage
-                                                  │
-                                                  ▼
-                                          [XLSXThreatAnalyzer] (Finds threats)
-                                                  │
-                                                  ▼
-                                          [XLSXThreatSanitizer] (Strips findings)
-                                                  │
-                                                  ▼
-  Output XLSX Path ◄── [OOXMLIntegrityValidator] ◄── [OOXMLPackageWriter]
-```
-
-## 4. Dependencies
-- `model.ooxml`
-- `parsing.ooxml`
-- `reconstruction`
-- `sanitization.xlsx`
-- `threat.common`
-- `threat.xlsx`
-- `processing.common`
-- `validation.ooxml`
-
-## 5. External Libraries / APIs
-None directly. Delegates to underlying components which use standard JDK ZIP APIs and XML DOM builders.
-
-## 6. Important Classes and Responsibilities
-### `XLSXCDRProcessor`
-- **Reconstruction Verification**: Verifies the reconstructed spreadsheet exists on disk and is larger than 0 bytes.
-- **Integrity Validation**: Re-reads the generated spreadsheet and validates its parts structure using `OOXMLIntegrityValidator`.
-- **Active Content Check**: Audits the reconstructed XLSX file to confirm that macros and ActiveX components (`xl/vbaproject.bin`, `xl/activex/*`) have been successfully removed if threats were identified.
+1. **Hash Input**: Computes initial SHA-256 (`CDRFileUtil.sha256(inputFile)`).
+2. **Read Package**: Ingests the SpreadsheetML package into an in-memory [`OOXMLPackage`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/model/ooxml/OOXMLPackage.java) via [`OOXMLPackageReader`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/parsing/ooxml/OOXMLPackageReader.java).
+3. **Threat Analysis**: Runs [`XLSXThreatAnalyzer`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/xlsx/XLSXThreatAnalyzer.java) to detect VBA macros, XLM macro sheets (`xl/macrosheets/`), ActiveX controls, DDE command formulas, external workbook links, active calculation functions (`RTD`, `CALL`, `WEBSERVICE`), external data connections (`xl/connections.xml`), and embedded payloads.
+4. **Sanitization Pass**:
+   - Executes [`XLSXThreatSanitizer`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/sanitization/xlsx/XLSXThreatSanitizer.java).
+   - Executes [`RecursiveOOXMLSanitizer`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/sanitization/common/RecursiveOOXMLSanitizer.java) on embedded packages in memory.
+5. **Clean Copy Check**:
+   - If no blocking findings were discovered, copies input byte-for-byte to output (`CDRFileUtil.copyOriginal`) and verifies SHA-256 identity (`cleanCopy = true`).
+6. **Reconstruction**:
+   - If actionable threats were present, serializes the sanitized package via [`OOXMLPackageWriter`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/reconstruction/OOXMLPackageWriter.java).
+7. **Bounded Hardening & Verification Loop (Up to 3 Passes)**:
+   - Re-reads output via `OOXMLPackageReader`.
+   - Validates structural integrity via [`OOXMLIntegrityValidator`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/validation/ooxml/OOXMLIntegrityValidator.java).
+   - Re-analyzes with `XLSXThreatAnalyzer`.
+   - Checks embedded payload safety with `RecursiveOOXMLSanitizer.hasBlockingEmbeddedContent`.
+   - If clean: breaks loop.
+   - If blocking findings remain and `pass < 3`: re-sanitizes, re-runs recursive sanitizer, and rewrites output to disk.
+8. **Result Assembly**: Computes output SHA-256 and returns [`CDRResult`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/processing/common/CDRResult.java).

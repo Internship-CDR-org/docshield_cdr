@@ -1,68 +1,95 @@
-# src/main/java Directory
+# Java Source Root (`src/main/java`)
 
-This is the root source directory for the Java codebase of DocShield, containing the application entry point and coordinating the document identification, parsing, disarming, reconstruction, and reporting flows.
+This directory contains the root source tree of DocShield CDR.
 
-## 1. Purpose
-The purpose of this directory is to house the primary coordinator class, `Main`, which serves as the CLI driver for DocShield. It binds all other subsystems (identification, parsing, processing, reporting) together.
+---
 
-## 2. Files in this Directory
-| File | Responsibility | Important Classes/Interfaces/Enums |
-| :--- | :--- | :--- |
-| `Main.java` | Application entry point. Reads CLI arguments, executes the file identification logic, triggers the format-specific parser, determines the appropriate CDR processor, runs the processor, and invokes reporting. | `Main` |
+## 1. Application Entry Point: `Main.java`
 
-## 3. How the Directory Fits into DocShield
-`Main` acts as the orchestrator of the entire process. It accepts input and output file paths from the CLI arguments, detects the format, builds the internal document model representation, triggers threat inspection and disarming, writes the reconstructed output file, and finally generates a threat report.
+[`Main.java`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/Main.java) is the CLI orchestrator and security gatekeeper.
 
-```
-                  CLI Input (run.sh)
-                           │
-                           ▼
-                       Main.java
-                           │
-        ┌──────────────────┼──────────────────┐
-        ▼                  ▼                  ▼
-FileIdentifier      ParserFactory        CDRProcessor
- (Format & ID)      (Get Parser)      (DOCX/PPTX/XLSX)
-        │                  │                  │
-        │                  ▼                  ▼
-        │            DocumentModel      Reconstruction & Sanitization
-        │                  │                  │
-        └─────────────────┬┴──────────────────┘
-                          ▼
-                     ReportWriter
-                          │
-                          ▼
-                     CDR Report & Output
-```
-
-## 4. Dependencies
-- `identification`
-- `model.common`
-- `parsing.common`
-- `processing.common`
-- `processing.docx`
-- `processing.pptx`
-- `processing.xlsx`
-- `reporting`
-
-## 5. External Libraries / APIs
-None directly in `Main.java`. Uses standard JDK APIs (`java.nio.file.Path`).
-
-## 6. Important Classes and Responsibilities
-### `Main`
-- **Orchestration**: Manages the flow of the engine from input file to disarmed output file.
-- **Validation Fallback**: Triggers basic `DOCExtractionValidator` if the document is legacy Word format (`DOC`).
-- **Reporting Routing**: Passes the parsed `DocumentModel` and `CDRResult` to the `ReportWriter` to generate output reports.
-
-## 7. Important Design Decisions
-- **Unified Pipeline**: Implements a standard detection -> parse -> process -> report sequence.
-- **Factory Resolution**: Dynamically retrieves parsers using the `ParserFactory` pattern, separating format-specific parser knowledge from the core driver.
-
-## 8. Reconstruction Behavior
-For non-OOXML formats (like PDF, RTF, DOC, PPT, XLS), `Main` executes only parsing and reporting, leaving the input file unmodified and writing a report, as reconstruction is only implemented via `CDRProcessor` for modern OOXML formats (`DOCX`, `PPTX`, `XLSX`).
-
-## 9. Example Usage
+### Command Line Interface
 ```bash
-./run.sh input.pptx output.pptx
+./run.sh <input-file> <output-file>
 ```
-This script builds the classpath and executes `Main` with the provided arguments.
+Or directly via Java:
+```bash
+java -cp "$CLASSPATH" Main <input-file> <output-file>
+```
+
+### Exit Codes
+- **`0`**: Successful processing. Either a clean copy was produced (with identical SHA-256) or the document was successfully sanitized, reconstructed, and verified.
+- **`1`**: Operator or command-line usage error (invalid arguments, same input/output path, unreadable file, un-writable destination directory).
+- **`2`**: Quarantine exit. The input file could not be safely identified, contained unremovable threats, failed integrity validation, encountered parser exceptions, or was an unsupported format (e.g. RTF). A timestamped quarantine record is preserved in `output/quarantine/`.
+
+---
+
+## 2. Decision Flow in `Main.java`
+
+```
+                      CLI Arguments (<input>, <output>)
+                                     │
+                                     ▼
+                      1. Argument & Path Validation
+                         (Ensure distinct, readable, non-empty)
+                                     │
+                                     ▼
+                      2. Format Identification (FileIdentifier)
+                         (Magic bytes, zip structures, anti-spoofing)
+                                     │
+              ┌──────────────────────┴──────────────────────┐
+              ▼                                             ▼
+       Unknown / Spoofed / RTF                       Valid Supported Format
+              │                                             │
+              ▼                                             ▼
+       Quarantine & Exit (2)                         3. CDRProcessor Selection
+                                                        • DOCX -> DOCXCDRProcessor
+                                                        • PPTX -> PPTXCDRProcessor
+                                                        • XLSX -> XLSXCDRProcessor
+                                                        • DOC  -> DOCCDRProcessor
+                                                        • PPT  -> PPTCDRProcessor
+                                                        • XLS  -> XLSCDRProcessor
+                                                        • PDF  -> PDFCDRProcessor
+                                                            │
+                                                            ▼
+                                                     4. Execution (processor.process)
+                                                            │
+                                     ┌──────────────────────┴──────────────────────┐
+                                     ▼                                             ▼
+                              CDR Success                                     Exception / Failure
+                                     │                                             │
+                                     ▼                                             ▼
+                       5. Verification Gates                                 Safe Delete Output
+                          • isOutputReady()?                                       │
+                          • isIntegrityPassed()?                                   ▼
+                          • threatsRemoved()?                               Quarantine & Exit (2)
+                                     │
+                      ┌──────────────┴──────────────┐
+                      ▼                             ▼
+                    PASS                          FAIL
+                      │                             │
+                      ▼                             ▼
+               6. Audit Reporting            Safe Delete Output
+                  (ReportWriter)                    │
+                      │                             ▼
+                      ▼                      Quarantine & Exit (2)
+               Release & Exit (0)
+```
+
+---
+
+## 3. Subsystem Package Map
+
+| Package | Role |
+|---|---|
+| [`identification`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/identification/README.md) | Binary magic byte sniffing, OOXML ZIP probing, and extension-mismatch anti-spoofing verification. |
+| [`parsing`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/parsing/README.md) | Secure OOXML archive ingestion ([`OOXMLPackageReader`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/parsing/ooxml/OOXMLPackageReader.java)), semantic IR extractors, and legacy conversion bridges. |
+| [`threat`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/README.md) | Capability-based threat analyzers for OOXML, DOCX, PPTX, XLSX, legacy Office, and PDF. |
+| [`sanitization`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/sanitization/README.md) | Disarming engines for OPC package graphs, Word fields, PowerPoint actions, Excel formulas, and PDF objects. |
+| [`reconstruction`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/reconstruction/README.md) | Package serializer ([`OOXMLPackageWriter`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/reconstruction/OOXMLPackageWriter.java)) dynamically rebuilding `[Content_Types].xml` and `.rels`. |
+| [`validation`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/validation/README.md) | Post-reconstruction structural integrity validators ([`OOXMLIntegrityValidator`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/validation/ooxml/OOXMLIntegrityValidator.java), [`PDFIntegrityValidator`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/validation/pdf/PDFIntegrityValidator.java)). |
+| [`processing`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/processing/README.md) | End-to-end format pipeline orchestrators, clean-copy optimizations, and bounded hardening loops. |
+| [`security`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/security/README.md) | Quarantine manager and isolation sandboxes ([`SubprocessSandbox`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/security/sandbox/SubprocessSandbox.java), [`PathSandbox`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/security/sandbox/PathSandbox.java), [`SecureXmlFactory`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/security/sandbox/SecureXmlFactory.java)). |
+| [`model`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/model/README.md) | In-memory package models ([`OOXMLPackage`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/model/ooxml/OOXMLPackage.java)) and semantic intermediate representations ([`DocumentModel`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/model/common/DocumentModel.java)). |
+| [`reporting`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/reporting/README.md) | Formats detailed human-readable audit reports (`output/reports/*_CDR_Report.txt`). |
+| [`application`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/application/README.md) | Translates internal exceptions into user-friendly terminal and quarantine messages. |

@@ -1,49 +1,39 @@
 # OOXML Integrity Validation Subsystem (`validation.ooxml`)
 
-This package is responsible for verifying the internal logical integrity of reconstructed Open Packaging Convention (OPC) / Office Open XML (OOXML) documents.
+The `validation.ooxml` package provides post-reconstruction structural and relational integrity verification for OPC / OOXML packages (`DOCX`, `PPTX`, `XLSX`).
 
-## 1. Purpose
-The purpose of the `validation.ooxml` directory is to protect against document corruption. When DocShield disarms a document by removing threats (like macro parts or OLE files) and serializing the remaining elements, this validator checks that the output package remains logically sound (e.g. that all internal file references resolved successfully and that the file contains required content descriptors).
+---
 
-## 2. Files in this Directory
-| File | Responsibility | Important Classes/Interfaces/Enums |
-| :--- | :--- | :--- |
-| `OOXMLIntegrityValidator.java` | Scans package parts and relationship lists to check that target files exist and that relationship definitions are valid and unique. | `OOXMLIntegrityValidator` |
+## 1. Architectural Purpose
 
-## 3. How the Directory Fits into DocShield
-- `DOCXCDRProcessor` and `XLSXCDRProcessor` invoke `OOXMLIntegrityValidator` after rewriting the output file.
-- If validation fails, `CDRResult` records `integrityPassed = false`.
+When DocShield disarms a package by stripping active XML tags, deleting threat-bearing binary parts (macros, OLE objects, controls), and removing relationships, the resulting document must remain compliant with the Open Packaging Conventions (OPC) specification. 
 
-```
-  Output File written
-          │
-          ▼ (Re-read into)
-     OOXMLPackage
-          │
-          ▼ (Validated by)
-  OOXMLIntegrityValidator.validate()
-          │
-          ├─► Confirm [Content_Types].xml is present
-          ├─► Confirm all parts have valid names
-          ├─► Confirm all relationships have unique IDs
-          └─► Confirm all internal relationship targets point to existing parts
-          │
-          ▼ (Outcome recorded in)
-      CDRResult (integrityPassed flag)
-```
+[`OOXMLIntegrityValidator`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/validation/ooxml/OOXMLIntegrityValidator.java) performs comprehensive graph validation on the re-read output package to verify that no broken pointers or malformed structures were introduced during sanitization and serialization.
 
-## 4. Dependencies
-- `model.ooxml`
+---
 
-## 5. External Libraries / APIs
-None. Standard JDK libraries only (`java.util.Set`, `java.util.HashSet`).
+## 2. Validation Checks in `OOXMLIntegrityValidator`
 
-## 6. Important Classes and Responsibilities
-### `OOXMLIntegrityValidator`
-- **Internal Validity Check (`validate(packageData)`)**:
-  - Ensures `[Content_Types].xml` is present and the content types map is populated.
-  - Ensures relationships have IDs, types, and targets.
-  - Checks relationship key uniqueness (uniqueness of the combination of source part and relationship ID).
-  - Resolves internal target paths (supporting relative paths, e.g. mapping `../media/image1.png` relative to `word/document.xml` to `word/media/image1.png`) and checks that the targeted files exist in the package.
-- **Preservation Check (`validate(original, reconstructed)`)**:
-  - Compares the reconstructed package against the original package to ensure that no foreign parts were injected (all parts in the reconstructed package must have originated from the original package).
+### A. Core Package Checks (`validate(OOXMLPackage packageData)`)
+1. **`[Content_Types].xml` Presence**: Confirms the package contains `[Content_Types].xml` and that the content-types mapping table is non-empty.
+2. **Part Name Normalization & Uniqueness**:
+   - Confirms every part has a valid, non-blank name.
+   - Rejects part names containing path traversals (`..`).
+   - Ensures part names are strictly unique across the package.
+3. **Content Type Coverage**:
+   - Ensures every part in the package has a resolvable MIME type (either via explicit `<Override>` or by matching a registered `<Default>` extension).
+   - Confirms that every explicit `<Override PartName="...">` declaration points to a part that actually exists in the package (no orphaned overrides).
+4. **Relationship Graph Integrity**:
+   - Ensures every relationship has non-blank `Id`, `Type`, and `Target` fields.
+   - Enforces unique `(SourcePart, RelationshipId)` keys (no duplicate relationship IDs per part).
+   - Verifies that the source part of each relationship exists in the package.
+   - **Internal Target Resolution**: Resolves relative path targets (e.g., `../media/image1.png` relative to `word/document.xml` -> `word/media/image1.png`), checks for path traversals, and asserts that every internal target exists physically in the package.
+
+### B. Original vs Reconstructed Comparison (`validate(original, reconstructed)`)
+- Compares the reconstructed package against the original package to verify that no unexpected or uninvented parts were injected (every part in the output must have existed in the original document).
+
+---
+
+## 3. Integration in Processors
+
+Called by [`DOCXCDRProcessor`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/processing/docx/DOCXCDRProcessor.java), [`PPTXCDRProcessor`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/processing/pptx/PPTXCDRProcessor.java), and [`XLSXCDRProcessor`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/processing/xlsx/XLSXCDRProcessor.java) during the post-reconstruction verification loop. If `validate()` returns `false`, `integrityPassed` is set to `false`, causing `Main.java` to safely delete the output file and quarantine the input.

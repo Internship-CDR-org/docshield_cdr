@@ -9,6 +9,9 @@ import parsing.common.ParserFactory;
 
 import processing.common.CDRProcessor;
 import processing.common.CDRResult;
+import processing.doc.DOCCDRProcessor;
+import processing.ppt.PPTCDRProcessor;
+import processing.xls.XLSCDRProcessor;
 import processing.docx.DOCXCDRProcessor;
 import processing.pptx.PPTXCDRProcessor;
 import processing.xlsx.XLSXCDRProcessor;
@@ -95,6 +98,17 @@ public class Main {
             return;
         }
 
+        // RTF is intentionally outside the current CDR release scope.
+        // It must never fall through to the analysis-only parser and be
+        // presented as a sanitized/released document. Full RTF CDR will be
+        // added as a separate hardening phase.
+        if (fileInfo.getFormat() == Format.RTF) {
+            quarantineAndExit(inputFile,
+                    "RTF CDR is not enabled in this release.",
+                    "RTF is not yet supported for safe disarm/reconstruction — file has been quarantined.");
+            return;
+        }
+
         try {
             CDRProcessor processor = createProcessor(fileInfo);
 
@@ -120,11 +134,11 @@ public class Main {
                     return;
                 }
 
-                if (!result.isReconstructionSuccessful()) {
+                if (!result.isOutputReady()) {
                     safeDelete(outputFile);
                     quarantineAndExit(inputFile,
-                            "Reconstruction did not produce a valid output file.",
-                            "The file could not be reconstructed safely — file has been quarantined.");
+                            "Processing did not produce a valid output file.",
+                            "The file could not be safely released — file has been quarantined.");
                     return;
                 }
 
@@ -147,7 +161,13 @@ public class Main {
                 // The reconstructed file has already passed CDR integrity checks.
                 // A semantic-reporting failure must not destroy that valid output.
                 try {
-                    DocumentParser parser = ParserFactory.getParser(fileInfo.getFormat());
+                    Format reportFormat = switch (fileInfo.getFormat()) {
+                        case DOC -> Format.DOCX;
+                        case PPT -> Format.PPTX;
+                        case XLS -> Format.XLSX;
+                        default -> fileInfo.getFormat();
+                    };
+                    DocumentParser parser = ParserFactory.getParser(reportFormat);
                     DocumentModel model = parser.parse(outputFile);
                     model.setFileInfo(fileInfo);
                     new ReportWriter().write(model, inputFile, result);
@@ -197,8 +217,9 @@ public class Main {
     private static void safeDelete(Path file) {
         try {
             if (file != null) Files.deleteIfExists(file);
-        } catch (IOException ignored) {
+        } catch (IOException cleanupError) {
             System.out.println("DocShield: A partial output file could not be removed. Please delete it manually: " + file);
+            System.out.println("Cleanup reason: " + cleanupError.getMessage());
         }
     }
 
@@ -234,11 +255,20 @@ public class Main {
 
         return switch (fileInfo.getFormat()) {
 
+            case DOC ->
+                    new DOCCDRProcessor();
+
             case DOCX ->
                     new DOCXCDRProcessor();
 
+            case PPT ->
+                    new PPTCDRProcessor();
+
             case PPTX ->
                     new PPTXCDRProcessor();
+
+            case XLS ->
+                    new XLSCDRProcessor();
 
             case XLSX ->
                     new XLSXCDRProcessor();
@@ -284,53 +314,41 @@ public class Main {
                 "Output : " +
                 outputFile
         );
+        System.out.println("Input SHA-256  : " + result.getInputSha256());
+        System.out.println("Output SHA-256 : " + result.getOutputSha256());
+        System.out.println("Original Copy  : " + result.isOriginalCopied());
+        System.out.println(
+                "Reconstructed  : " +
+                (result.isOriginalCopied()
+                        ? "NO (clean input - original copied unchanged)"
+                        : result.isReconstructionSuccessful()
+                                ? "YES"
+                                : "NO (FAILED)")
+        );
 
         System.out.println();
 
 
         if (result.hasThreats()) {
-
-            System.out.println(
-                    "Threat : YES"
-            );
-
-            System.out.println(
-                    "Type   : " +
-                    result.getThreatSummary()
-            );
-
-            System.out.println(
-                    "Level  : " +
-                    result.getHighestSeverity()
-            );
-
-            System.out.println(
-                    "Action : " +
-                    (
-                            result.isThreatRemoved()
-                                    ? "REMOVED"
-                                    : "NOT REMOVED"
-                    )
-            );
-
+            System.out.println("Threat : YES");
+            System.out.println("Initial findings : " + result.getFindings().size());
+            System.out.println("Type   : " + result.getThreatSummary());
+            System.out.println("Level  : " + result.getHighestSeverity());
+            System.out.println("Action : " + (result.isThreatRemoved() ? "REMOVED" : "NOT REMOVED"));
+        } else if (result.hasBlockingFindings()) {
+            System.out.println("Threat : NO");
+            System.out.println("Policy/Security findings : YES (" + result.getFindings().size() + ")");
+            System.out.println("Action : " + (result.isThreatRemoved() ? "RESOLVED" : "NOT RESOLVED"));
         } else {
-
-            System.out.println(
-                    "Threat : NO"
-            );
+            System.out.println("Threat : NO");
+            System.out.println("Initial findings : " + result.getFindings().size());
         }
+
+        System.out.println("Final findings   : " + result.getFinalFindings().size() +
+                (result.getFinalFindings().isEmpty() ? " (CLEAN)" : " (REMAINING)"));
 
 
         System.out.println();
-
-        System.out.println(
-                "Reconstruction : " +
-                (
-                        result.isReconstructionSuccessful()
-                                ? "SUCCESS"
-                                : "FAILED"
-                )
-        );
 
         System.out.println(
                 "Integrity      : " +

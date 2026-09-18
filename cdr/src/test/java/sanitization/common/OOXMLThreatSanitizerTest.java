@@ -15,12 +15,24 @@ class OOXMLThreatSanitizerTest {
     @Test
     void removesUnsafePartsRelationshipsAndContentTypes() {
         OOXMLPackage pkg = new OOXMLPackage();
-        pkg.addPart(new OOXMLPart("ppt/slides/slide1.xml", "application/xml", "<p/>".getBytes()));
-        pkg.addPart(new OOXMLPart("ppt/embeddings/evil.bin", "application/vnd.ms-office.oleObject", new byte[]{'M','Z'}));
-        pkg.addContentType("ppt/embeddings/evil.bin", "application/vnd.ms-office.oleObject");
-        pkg.addRelationship(new OOXMLRelationship("ppt/slides/slide1.xml", "rId1",
-                "http://schemas.openxmlformats.org/officeDocument/2006/relationships/oleObject",
-                "../embeddings/evil.bin", null));
+        pkg.addPart(new OOXMLPart("ppt/slides/slide1.xml",
+                "application/xml",
+                "<p/>".getBytes()));
+
+        byte[] pe = new byte[68];
+        pe[0] = 'M';
+        pe[1] = 'Z';
+        pe[0x3C] = 0x40;
+        pe[0x40] = 'P';
+        pe[0x41] = 'E';
+        pe[0x42] = 0;
+        pe[0x43] = 0;
+
+        pkg.addPart(new OOXMLPart(
+                "ppt/embeddings/evil.bin",
+                "application/vnd.ms-office.oleObject",
+                pe
+        ));
 
         List<SecurityFinding> findings = new OOXMLThreatAnalyzer().analyze(pkg);
         List<String> actions = new OOXMLThreatSanitizer().sanitize(pkg, findings);

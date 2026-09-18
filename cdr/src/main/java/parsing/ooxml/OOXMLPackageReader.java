@@ -96,6 +96,8 @@ public class OOXMLPackageReader {
                 packageData
         );
 
+        validateXmlParts(packageData);
+
         readRelationships(
                 packageData
         );
@@ -119,6 +121,7 @@ public class OOXMLPackageReader {
         OOXMLPackage packageData = new OOXMLPackage();
         readParts(inputStream, packageData);
         readContentTypes(packageData);
+        validateXmlParts(packageData);
         readRelationships(packageData);
         return packageData;
     }
@@ -168,6 +171,7 @@ public class OOXMLPackageReader {
                 }
 
                 String rawName = entry.getName();
+                security.sandbox.PathSandbox.assertSafeZipEntry(rawName);
                 if (rawName == null || rawName.isBlank()) {
                     throw new IOException("OOXML package contains an empty ZIP entry name.");
                 }
@@ -216,6 +220,7 @@ public class OOXMLPackageReader {
 
 
             String rawName = entry.getName();
+            security.sandbox.PathSandbox.assertSafeZipEntry(rawName);
             if (rawName == null || rawName.isBlank()) {
                 throw new IOException("OOXML package contains an empty ZIP entry name.");
             }
@@ -280,140 +285,62 @@ public class OOXMLPackageReader {
     }
 
 
-    private void readContentTypes(
-            OOXMLPackage packageData) {
-
-        OOXMLPart part =
-                packageData.getPart(
-                        "[Content_Types].xml"
-                );
-
-
-        if (part == null ||
-                part.getData() == null) {
-
-            return;
+    private void readContentTypes(OOXMLPackage packageData) throws IOException {
+        OOXMLPart part = packageData.getPart("[Content_Types].xml");
+        if (part == null || part.getData() == null || part.getData().length == 0) {
+            throw new IOException("OOXML package is missing [Content_Types].xml.");
         }
 
-
         try {
-
-            Document document =
-                    parseXml(
-                            part.getData()
-                    );
-
-
-            Element root =
-                    document.getDocumentElement();
-
-
-            if (root == null) {
-                return;
+            Document document = parseXml(part.getData());
+            Element root = document.getDocumentElement();
+            if (root == null || !"Types".equals(localName(root)) ||
+                    !CONTENT_TYPES_NAMESPACE.equals(root.getNamespaceURI())) {
+                throw new IOException("Invalid OOXML [Content_Types].xml root element or namespace.");
             }
 
-
-            NodeList children =
-                    root.getChildNodes();
-
-
-            for (
-                    int i = 0;
-                    i < children.getLength();
-                    i++
-            ) {
-
-                Node node =
-                        children.item(i);
-
-
-                if (!(node instanceof Element)) {
-                    continue;
-                }
-
-
-                Element element =
-                        (Element) node;
-
-
-                String localName =
-                        element.getLocalName();
-
-
-                if (localName == null) {
-
-                    localName =
-                            element.getNodeName();
-                }
-
-
-                if ("Default".equals(
-                        localName
-                )) {
-
-                    String extension =
-                            element.getAttribute(
-                                    "Extension"
-                            );
-
-
-                    String contentType =
-                            element.getAttribute(
-                                    "ContentType"
-                            );
-
-
-                    if (!extension.isBlank() &&
-                            !contentType.isBlank()) {
-
-                        packageData.addContentType(
-                                "." + extension,
-                                contentType
-                        );
+            NodeList children = root.getChildNodes();
+            int declarations = 0;
+            for (int i = 0; i < children.getLength(); i++) {
+                Node node = children.item(i);
+                if (!(node instanceof Element element)) continue;
+                String localName = localName(element);
+                if ("Default".equals(localName)) {
+                    String extension = element.getAttribute("Extension").trim();
+                    String contentType = element.getAttribute("ContentType").trim();
+                    if (extension.isBlank() || contentType.isBlank()) {
+                        throw new IOException("Invalid Default content-type declaration in [Content_Types].xml.");
                     }
-
-
-                } else if ("Override".equals(
-                        localName
-                )) {
-
-                    String partName =
-                            element.getAttribute(
-                                    "PartName"
-                            );
-
-
-                    String contentType =
-                            element.getAttribute(
-                                    "ContentType"
-                            );
-
-
-                    if (!partName.isBlank() &&
-                            !contentType.isBlank()) {
-
-                        packageData.addContentType(
-                                normalize(partName),
-                                contentType
-                        );
+                    packageData.addContentType("." + extension, contentType);
+                    declarations++;
+                } else if ("Override".equals(localName)) {
+                    String partName = element.getAttribute("PartName").trim();
+                    String contentType = element.getAttribute("ContentType").trim();
+                    if (partName.isBlank() || contentType.isBlank() ||
+                            !partName.startsWith("/")) {
+                        throw new IOException("Invalid Override content-type declaration in [Content_Types].xml.");
                     }
+                    packageData.addContentType(normalize(partName), contentType);
+                    declarations++;
+                } else {
+                    throw new IOException("Unexpected element in [Content_Types].xml: " + element.getNodeName());
                 }
             }
-
-
-            applyContentTypes(
-                    packageData
-            );
-
-        } catch (Exception ignored) {
-
-            /*
-             * Preserve all raw package data even if
-             * content-type metadata cannot be parsed.
-             */
+            if (declarations == 0) {
+                throw new IOException("OOXML [Content_Types].xml contains no content-type declarations.");
+            }
+            applyContentTypes(packageData);
+        } catch (IOException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IOException("OOXML [Content_Types].xml could not be safely parsed.", e);
         }
     }
 
+    private String localName(Element element) {
+        String name = element.getLocalName();
+        return name == null ? element.getNodeName() : name;
+    }
 
     private void applyContentTypes(
             OOXMLPackage packageData) {
@@ -462,8 +389,26 @@ public class OOXMLPackageReader {
     }
 
 
+    private void validateXmlParts(OOXMLPackage packageData) throws IOException {
+        for (OOXMLPart part : packageData.getParts()) {
+            if (part == null || part.getPartName() == null || part.getData() == null) continue;
+            String name = part.getPartName().toLowerCase(java.util.Locale.ROOT);
+            if (!part.isXml() && !name.endsWith(".xml") && !name.endsWith(".rels")) continue;
+            try {
+                Document document = parseXml(part.getData());
+                if (document.getDocumentElement() == null) {
+                    throw new IOException("XML part has no document element: " + part.getPartName());
+                }
+            } catch (IOException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new IOException("XML part could not be safely parsed: " + part.getPartName(), e);
+            }
+        }
+    }
+
     private void readRelationships(
-            OOXMLPackage packageData) {
+            OOXMLPackage packageData) throws IOException {
 
         List<OOXMLPart> relationshipParts =
                 new ArrayList<>();
@@ -501,126 +446,43 @@ public class OOXMLPackageReader {
     }
 
 
-    private void readRelationshipPart(
-            OOXMLPart relationshipPart,
-            OOXMLPackage packageData) {
-
+    private void readRelationshipPart(OOXMLPart relationshipPart, OOXMLPackage packageData) throws IOException {
         try {
-
-            Document document =
-                    parseXml(
-                            relationshipPart.getData()
-                    );
-
-
-            Element root =
-                    document.getDocumentElement();
-
-
-            if (root == null) {
-                return;
+            Document document = parseXml(relationshipPart.getData());
+            Element root = document.getDocumentElement();
+            if (root == null || !"Relationships".equals(localName(root)) ||
+                    !RELATIONSHIP_NAMESPACE.equals(root.getNamespaceURI())) {
+                throw new IOException("Invalid OOXML relationship-part root or namespace: " + relationshipPart.getPartName());
             }
 
-
-            String sourcePart =
-                    getSourcePartFromRelationshipPart(
-                            relationshipPart.getPartName()
-                    );
-
-
-            NodeList children =
-                    root.getChildNodes();
-
-
-            for (
-                    int i = 0;
-                    i < children.getLength();
-                    i++
-            ) {
-
-                Node node =
-                        children.item(i);
-
-
-                if (!(node instanceof Element)) {
-                    continue;
+            String sourcePart = getSourcePartFromRelationshipPart(relationshipPart.getPartName());
+            NodeList children = root.getChildNodes();
+            java.util.HashSet<String> ids = new java.util.HashSet<>();
+            for (int i = 0; i < children.getLength(); i++) {
+                Node node = children.item(i);
+                if (!(node instanceof Element element)) continue;
+                if (!"Relationship".equals(localName(element))) {
+                    throw new IOException("Unexpected element in relationship part: " + relationshipPart.getPartName());
                 }
-
-
-                Element element =
-                        (Element) node;
-
-
-                String localName =
-                        element.getLocalName();
-
-
-                if (localName == null) {
-
-                    localName =
-                            element.getNodeName();
+                String id = element.getAttribute("Id").trim();
+                String type = element.getAttribute("Type").trim();
+                String target = element.getAttribute("Target").trim();
+                String targetMode = element.getAttribute("TargetMode").trim();
+                if (id.isBlank() || type.isBlank() || target.isBlank() || !ids.add(id)) {
+                    throw new IOException("Invalid or duplicate relationship in: " + relationshipPart.getPartName());
                 }
-
-
-                if (!"Relationship".equals(
-                        localName
-                )) {
-
-                    continue;
+                if (!targetMode.isBlank() && !"External".equalsIgnoreCase(targetMode)) {
+                    throw new IOException("Unsupported OOXML relationship TargetMode in: " + relationshipPart.getPartName());
                 }
-
-
-                String id =
-                        element.getAttribute(
-                                "Id"
-                        );
-
-
-                String type =
-                        element.getAttribute(
-                                "Type"
-                        );
-
-
-                String target =
-                        element.getAttribute(
-                                "Target"
-                        );
-
-
-                String targetMode =
-                        element.getAttribute(
-                                "TargetMode"
-                        );
-
-
-                if (targetMode != null &&
-                        targetMode.isBlank()) {
-
-                    targetMode = null;
-                }
-
-
-                packageData.addRelationship(
-                        new OOXMLRelationship(
-                                sourcePart,
-                                id,
-                                type,
-                                target,
-                                targetMode
-                        )
-                );
+                packageData.addRelationship(new OOXMLRelationship(
+                        sourcePart, id, type, target, targetMode.isBlank() ? null : targetMode));
             }
-
-        } catch (Exception ignored) {
-
-            /*
-             * Preserve the raw relationship part even
-             * when parsing fails.
-             */
+        } catch (IOException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IOException("OOXML relationship part could not be safely parsed: " + relationshipPart.getPartName(), e);
         }
     }
-
 
     private Document parseXml(
             byte[] data)
@@ -635,7 +497,7 @@ public class OOXMLPackageReader {
 
 
         DocumentBuilderFactory factory =
-                DocumentBuilderFactory.newInstance();
+                security.sandbox.SecureXmlFactory.createSecureDocumentBuilderFactory();
 
         factory.setNamespaceAware(true);
         factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);

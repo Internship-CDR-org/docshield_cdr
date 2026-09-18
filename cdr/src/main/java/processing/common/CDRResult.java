@@ -3,6 +3,7 @@ package processing.common;
 import threat.common.SecurityFinding;
 
 import java.nio.file.Path;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -18,6 +19,10 @@ public class CDRResult {
     private final boolean integrityPassed;
 
     private final boolean threatsRemoved;
+    private final List<SecurityFinding> finalFindings;
+    private final String inputSha256;
+    private final String outputSha256;
+    private final boolean originalCopied;
 
 
     public CDRResult(
@@ -49,6 +54,53 @@ public class CDRResult {
 
         this.threatsRemoved =
                 threatsRemoved;
+        this.finalFindings = new ArrayList<>();
+        this.inputSha256 = null;
+        this.outputSha256 = null;
+        this.originalCopied = false;
+    }
+
+
+    public CDRResult(
+            List<SecurityFinding> findings,
+            List<String> actions,
+            Path outputPath,
+            boolean reconstructionSuccessful,
+            boolean integrityPassed,
+            boolean threatsRemoved,
+            List<SecurityFinding> finalFindings) {
+
+        this.findings = findings == null ? new ArrayList<>() : new ArrayList<>(findings);
+        this.actions = actions == null ? new ArrayList<>() : new ArrayList<>(actions);
+        this.outputPath = outputPath;
+        this.reconstructionSuccessful = reconstructionSuccessful;
+        this.integrityPassed = integrityPassed;
+        this.threatsRemoved = threatsRemoved;
+        this.finalFindings = finalFindings == null ? new ArrayList<>() : new ArrayList<>(finalFindings);
+        this.inputSha256 = null;
+        this.outputSha256 = null;
+        this.originalCopied = false;
+    }
+
+    public CDRResult(
+            List<SecurityFinding> findings, List<String> actions, Path outputPath,
+            boolean reconstructionSuccessful, boolean integrityPassed, boolean threatsRemoved,
+            List<SecurityFinding> finalFindings, String inputSha256, String outputSha256,
+            boolean originalCopied) {
+        this.findings = findings == null ? new ArrayList<>() : new ArrayList<>(findings);
+        this.actions = actions == null ? new ArrayList<>() : new ArrayList<>(actions);
+        this.outputPath = outputPath;
+        this.reconstructionSuccessful = reconstructionSuccessful;
+        this.integrityPassed = integrityPassed;
+        this.threatsRemoved = threatsRemoved;
+        this.finalFindings = finalFindings == null ? new ArrayList<>() : new ArrayList<>(finalFindings);
+        this.inputSha256 = inputSha256;
+        this.outputSha256 = outputSha256;
+        this.originalCopied = originalCopied;
+    }
+
+    public List<SecurityFinding> getFinalFindings() {
+        return Collections.unmodifiableList(finalFindings);
     }
 
 
@@ -61,6 +113,16 @@ public class CDRResult {
         return Collections.unmodifiableList(actions);
     }
 
+
+    public String getInputSha256() { return inputSha256; }
+
+    public String getOutputSha256() { return outputSha256; }
+
+    /** True when the output is an exact byte-for-byte copy of the original input. */
+    public boolean isOriginalCopied() { return originalCopied; }
+
+    /** True when an output artifact exists, whether copied unchanged or reconstructed. */
+    public boolean isOutputReady() { return outputPath != null && Files.exists(outputPath) && Files.isRegularFile(outputPath); }
 
     public Path getOutputPath() {
         return outputPath;
@@ -88,19 +150,19 @@ public class CDRResult {
      * Policy violations are blocking as well as confirmed threats.
      */
     public boolean hasBlockingFindings() {
+        return containsBlocking(findings) || containsBlocking(finalFindings);
+    }
 
-        for (SecurityFinding finding : findings) {
-
+    private static boolean containsBlocking(List<SecurityFinding> source) {
+        if (source == null) return false;
+        for (SecurityFinding finding : source) {
             if (finding != null &&
-                    (finding.getClassification() ==
-                            threat.common.FindingClassification.THREAT
-                    || finding.getClassification() ==
-                            threat.common.FindingClassification.POLICY_VIOLATION)) {
-
+                    (finding.getClassification() == threat.common.FindingClassification.THREAT
+                    || finding.getClassification() == threat.common.FindingClassification.POLICY_VIOLATION
+                    || finding.getClassification() == threat.common.FindingClassification.SUSPICIOUS)) {
                 return true;
             }
         }
-
         return false;
     }
 

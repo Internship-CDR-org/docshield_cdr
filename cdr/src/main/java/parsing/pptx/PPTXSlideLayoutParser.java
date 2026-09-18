@@ -174,7 +174,7 @@ public class PPTXSlideLayoutParser {
         try {
 
             DocumentBuilderFactory factory =
-                    DocumentBuilderFactory.newInstance();
+                    security.sandbox.SecureXmlFactory.createSecureDocumentBuilderFactory();
 
             factory.setNamespaceAware(
                     true

@@ -85,7 +85,7 @@ class RecursiveOOXMLSanitizerTest {
     private byte[] minimalDocxPackage(boolean vba) throws Exception {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try (ZipOutputStream zip = new ZipOutputStream(out)) {
-            put(zip, "[Content_Types].xml", "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"/>".getBytes(StandardCharsets.UTF_8));
+            put(zip, "[Content_Types].xml", "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"xml\" ContentType=\"application/xml\"/></Types>".getBytes(StandardCharsets.UTF_8));
             put(zip, "_rels/.rels", "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"/>".getBytes(StandardCharsets.UTF_8));
             put(zip, "word/document.xml", "<w:document xmlns:w=\"x\"/>".getBytes(StandardCharsets.UTF_8));
             if (vba) put(zip, "word/vbaProject.bin", new byte[]{'M', 'Z', 0, 0});

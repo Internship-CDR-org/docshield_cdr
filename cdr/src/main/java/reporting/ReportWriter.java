@@ -90,7 +90,8 @@ public class ReportWriter {
 
                 writeIdentification(
                         writer,
-                        model
+                        model,
+                        result
                 );
 
 
@@ -159,14 +160,14 @@ public class ReportWriter {
                         result.getFindings().isEmpty()) {
 
                         writer.write(
-                                "Threats detected : NO"
+                                "Security findings : NONE"
                         );
                         writer.newLine();
 
                 } else {
 
                         writer.write(
-                                "Threats detected : YES"
+                                "Security findings : YES (" + result.getFindings().size() + ")"
                         );
                         writer.newLine();
 
@@ -242,6 +243,46 @@ public class ReportWriter {
 
 
                 // =====================================================
+                // POST-CDR FINAL FINDINGS
+                // =====================================================
+
+                writer.write("POST-CDR FINAL FINDINGS");
+                writer.newLine();
+                writer.write("------------------------------------------------------------");
+                writer.newLine();
+
+                if (result == null || result.getFinalFindings() == null || result.getFinalFindings().isEmpty()) {
+                    writer.write("Remaining threats/findings : NONE");
+                    writer.newLine();
+                } else {
+                    writer.write("Remaining threats/findings : " + result.getFinalFindings().size());
+                    writer.newLine();
+                    for (threat.common.SecurityFinding finding : result.getFinalFindings()) {
+                        if (finding == null) continue;
+                        writer.newLine();
+                        writer.write("Classification : " + finding.getClassification());
+                        writer.newLine();
+                        writer.write("Type           : " + finding.getType());
+                        writer.newLine();
+                        writer.write("Severity       : " + finding.getSeverity());
+                        writer.newLine();
+                        writer.write("Part           : " + finding.getPartName());
+                        writer.newLine();
+                        writer.write("Source Part    : " + finding.getSourcePart());
+                        writer.newLine();
+                        writer.write("Relationship ID: " + finding.getRelationshipId());
+                        writer.newLine();
+                        writer.write("Evidence       : " + finding.getEvidence());
+                        writer.newLine();
+                        writer.write("Description    : " + finding.getDescription());
+                        writer.newLine();
+                    }
+                }
+
+                writer.newLine();
+
+
+                // =====================================================
                 // SANITIZATION
                 // =====================================================
 
@@ -310,15 +351,16 @@ public class ReportWriter {
                         writer.newLine();
 
                 } else {
+                        String reconstructionStatus;
 
-                        writer.write(
-                                "Status    : " +
-                                (
-                                        result.isReconstructionSuccessful()
-                                                ? "SUCCESS"
-                                                : "FAILED"
-                                )
-                        );
+			if (result.isOriginalCopied()) {
+    				reconstructionStatus = "NOT REQUIRED (clean input - original copied unchanged)";
+			} else if (result.isReconstructionSuccessful()) {
+    				reconstructionStatus = "SUCCESS";
+			} else {
+    				reconstructionStatus = "FAILED";
+			}
+			writer.write("Reconstruction : " + reconstructionStatus);
                         writer.newLine();
 
                         writer.write(
@@ -354,7 +396,8 @@ public class ReportWriter {
 
     private void writeIdentification(
             BufferedWriter writer,
-            DocumentModel model)
+            DocumentModel model,
+            processing.common.CDRResult result)
             throws IOException {
 
         writer.write("FILE IDENTIFICATION");
@@ -419,6 +462,22 @@ public class ReportWriter {
                 model.getFileInfo().getSha256()
         );
         writer.newLine();
+
+        if (result != null) {
+            writer.write("Output SHA-256  : " + result.getOutputSha256());
+            writer.newLine();
+            writer.write("Original Copy   : " + result.isOriginalCopied());
+            writer.newLine();
+            writer.write(
+                "Reconstructed   : " +
+                (result.isOriginalCopied()
+                        ? "NO (clean input - original copied unchanged)"
+                        : result.isReconstructionSuccessful()
+                                ? "YES"
+                                : "NO (FAILED)")
+        );
+        writer.newLine();
+        }
 
 
         writer.write(

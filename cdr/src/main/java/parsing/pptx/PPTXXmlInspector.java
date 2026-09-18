@@ -517,7 +517,7 @@ public class PPTXXmlInspector {
             throws Exception {
 
         DocumentBuilderFactory factory =
-                DocumentBuilderFactory.newInstance();
+                security.sandbox.SecureXmlFactory.createSecureDocumentBuilderFactory();
 
 
         factory.setNamespaceAware(

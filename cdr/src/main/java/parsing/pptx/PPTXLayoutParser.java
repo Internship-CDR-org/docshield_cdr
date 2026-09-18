@@ -673,7 +673,7 @@ public class PPTXLayoutParser {
         try {
 
             DocumentBuilderFactory factory =
-                    DocumentBuilderFactory.newInstance();
+                    security.sandbox.SecureXmlFactory.createSecureDocumentBuilderFactory();
 
             /*
              * OOXML uses namespaces, so this is required

@@ -24,6 +24,11 @@ public final class UserFacingError {
         if (root instanceof ZipException || containsAny(text, "zip", "end header", "central directory", "not a zip")) {
             return "The file is damaged, incomplete, or is not a valid document package.";
         }
+        if (containsAny(text, "libreoffice conversion", "libreoffice", "conversion timed out")) {
+            return text.isBlank()
+                    ? "LibreOffice conversion failed."
+                    : text;
+        }
         if (containsAny(text, "unsafe ooxml zip entry path", "path traversal")) {
             return "The file contains an unsafe package path and cannot be processed safely.";
         }

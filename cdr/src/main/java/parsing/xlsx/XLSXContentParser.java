@@ -234,7 +234,7 @@ public class XLSXContentParser {
             throws Exception {
 
         DocumentBuilderFactory factory =
-                DocumentBuilderFactory.newInstance();
+                security.sandbox.SecureXmlFactory.createSecureDocumentBuilderFactory();
 
         factory.setNamespaceAware(true);
 

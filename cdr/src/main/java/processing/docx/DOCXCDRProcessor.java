@@ -8,60 +8,88 @@ import sanitization.common.RecursiveOOXMLSanitizer;
 import threat.common.FindingClassification;
 import threat.common.SecurityFinding;
 import threat.docx.DOCXThreatAnalyzer;
+import processing.common.CDRConsoleReporter;
+import processing.common.CDRFileUtil;
 import processing.common.CDRProcessor;
 import processing.common.CDRResult;
 import validation.ooxml.OOXMLIntegrityValidator;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 public class DOCXCDRProcessor implements CDRProcessor {
     @Override
     public CDRResult process(Path inputFile, Path outputFile) throws Exception {
-        OOXMLPackageReader reader = new OOXMLPackageReader();
-        OOXMLPackage packageData = reader.read(inputFile);
+        return process(inputFile, outputFile, true);
+    }
 
+    /** Internal variant used by legacy-format adapters to avoid duplicate console output. */
+    public CDRResult process(Path inputFile, Path outputFile, boolean printConsoleFindings) throws Exception {
+        OOXMLPackageReader reader = new OOXMLPackageReader();
+        final String inputSha256 = processing.common.CDRFileUtil.sha256(inputFile);
+        OOXMLPackage packageData = reader.read(inputFile);
         DOCXThreatAnalyzer analyzer = new DOCXThreatAnalyzer();
         List<SecurityFinding> findings = analyzer.analyze(packageData);
+        if (printConsoleFindings) CDRConsoleReporter.printAnalyzerFindings("DOCX", findings);
 
         DOCXThreatSanitizer sanitizer = new DOCXThreatSanitizer();
-        List<String> actions = new java.util.ArrayList<>(sanitizer.sanitize(packageData, findings));
-
-        // Embedded OOXML is a nested trust boundary. Apply the same CDR
-        // pipeline to a nested DOCX/XLSX/PPTX rather than trusting it merely
-        // because it is inside an otherwise valid DOCX.
+        List<String> actions = new ArrayList<>(sanitizer.sanitize(packageData, findings));
         RecursiveOOXMLSanitizer recursive = new RecursiveOOXMLSanitizer();
-        RecursiveOOXMLSanitizer.Result recursiveResult =
-                recursive.sanitizeEmbeddedPackages(packageData, findings);
+        RecursiveOOXMLSanitizer.Result recursiveResult = recursive.sanitizeEmbeddedPackages(packageData, findings);
         actions.addAll(recursiveResult.getActions());
 
-        new OOXMLPackageWriter().write(packageData, outputFile);
-
-        boolean reconstructed = Files.exists(outputFile) && Files.size(outputFile) > 0;
-        boolean integrityPassed = false;
-        boolean threatsRemoved = false;
-
-        if (reconstructed) {
-            OOXMLPackage reread = reader.read(outputFile);
-            integrityPassed = new OOXMLIntegrityValidator().validate(reread);
-            List<SecurityFinding> remaining = analyzer.analyze(reread);
-            boolean embeddedSafe = !recursive.hasBlockingEmbeddedContent(reread);
-            threatsRemoved = !containsBlockingFinding(remaining) && embeddedSafe;
+        if (!containsBlockingFinding(findings)) {
+            CDRFileUtil.copyOriginal(inputFile, outputFile);
+            String outputSha256 = CDRFileUtil.sha256(outputFile);
+            if (!inputSha256.equals(outputSha256)) throw new java.io.IOException("Clean DOCX copy failed SHA-256 identity verification.");
+            actions.add("Input verified clean; original DOCX copied without reconstruction.");
+            return new CDRResult(findings, actions, outputFile, false, true, true,
+                    new ArrayList<>(), inputSha256, outputSha256, true);
         }
 
-        return new CDRResult(findings, actions, outputFile, reconstructed,
-                integrityPassed, threatsRemoved);
+        new OOXMLPackageWriter().write(packageData, outputFile);
+        boolean reconstructed = Files.exists(outputFile) && Files.size(outputFile) > 0;
+        boolean integrityPassed = false;
+        List<SecurityFinding> finalFindings = new ArrayList<>();
+        boolean threatsRemoved = false;
+
+        // Bounded post-reconstruction hardening loop. A first sanitization can
+        // expose a second-layer relationship/embedded-content finding only
+        // after the package has been rewritten and reread. Re-sanitize at most
+        // three times, then fail closed if anything blocking remains.
+        for (int pass = 1; reconstructed && pass <= 3; pass++) {
+            OOXMLPackage reread = reader.read(outputFile);
+            integrityPassed = new OOXMLIntegrityValidator().validate(reread);
+            finalFindings = new ArrayList<>();
+            finalFindings.addAll(analyzer.analyze(reread));
+            boolean embeddedSafe = !recursive.hasBlockingEmbeddedContent(reread);
+            threatsRemoved = integrityPassed && !containsBlockingFinding(finalFindings) && embeddedSafe;
+            if (threatsRemoved) break;
+
+            if (pass < 3 && containsBlockingFinding(finalFindings)) {
+                List<String> retryActions = new DOCXThreatSanitizer().sanitize(reread, finalFindings);
+                actions.addAll(retryActions);
+                RecursiveOOXMLSanitizer.Result retryRecursive = recursive.sanitizeEmbeddedPackages(reread, finalFindings);
+                actions.addAll(retryRecursive.getActions());
+                new OOXMLPackageWriter().write(reread, outputFile);
+            }
+        }
+        if (printConsoleFindings) CDRConsoleReporter.printFinalFindings("DOCX", finalFindings);
+        if (!finalFindings.isEmpty()) {
+            actions.add("Post-reconstruction security verification found remaining blocking or policy findings.");
+        }
+        String outputSha256 = reconstructed ? CDRFileUtil.sha256(outputFile) : null;
+        return new CDRResult(findings, actions, outputFile, reconstructed, integrityPassed, threatsRemoved, finalFindings, inputSha256, outputSha256, false);
     }
 
     private boolean containsBlockingFinding(List<SecurityFinding> findings) {
         if (findings == null) return false;
         for (SecurityFinding finding : findings) {
-            if (finding == null) continue;
-            if (finding.getClassification() == FindingClassification.THREAT ||
-                    finding.getClassification() == FindingClassification.POLICY_VIOLATION) {
-                return true;
-            }
+            if (finding != null && (finding.getClassification() == FindingClassification.THREAT ||
+                    finding.getClassification() == FindingClassification.POLICY_VIOLATION ||
+                    finding.getClassification() == FindingClassification.SUSPICIOUS)) return true;
         }
         return false;
     }

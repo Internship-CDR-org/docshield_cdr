@@ -9,18 +9,13 @@ import threat.common.FindingClassification;
 import threat.common.SecurityFinding;
 import threat.pptx.PPTXThreatAnalyzer;
 import sanitization.common.RecursiveOOXMLSanitizer;
-import threat.pptx.Ole10NativeAnalyzer;
-import threat.pptx.PayloadFingerprint;
-import threat.pptx.PayloadIdentifier;
-import threat.pptx.SecurityPolicy;
+import processing.common.CDRFileUtil;
 import processing.common.CDRProcessor;
 import processing.common.CDRResult;
+import processing.common.CDRConsoleReporter;
 import validation.ooxml.OOXMLIntegrityValidator;
 
-import org.apache.poi.poifs.filesystem.DirectoryNode;
-import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 
-import java.io.ByteArrayInputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -30,84 +25,69 @@ import java.util.List;
 public class PPTXCDRProcessor implements CDRProcessor {
     @Override
     public CDRResult process(Path inputFile, Path outputFile) throws Exception {
+        return process(inputFile, outputFile, true);
+    }
+
+    /** Internal variant used by legacy-format adapters to avoid duplicate console output. */
+    public CDRResult process(Path inputFile, Path outputFile, boolean printConsoleFindings) throws Exception {
         OOXMLPackageReader reader = new OOXMLPackageReader();
+        final String inputSha256 = processing.common.CDRFileUtil.sha256(inputFile);
         OOXMLPackage packageData = reader.read(inputFile);
 
         List<SecurityFinding> findings = new ArrayList<>();
         findings.addAll(new PPTXThreatAnalyzer().analyze(packageData));
-
         List<String> actions = new ArrayList<>();
+
         RecursiveOOXMLSanitizer recursiveSanitizer = new RecursiveOOXMLSanitizer();
         List<SecurityFinding> recursiveFindings = new ArrayList<>();
         RecursiveOOXMLSanitizer.Result recursiveResult =
                 recursiveSanitizer.sanitizeEmbeddedPackages(packageData, recursiveFindings);
         actions.addAll(recursiveResult.getActions());
-
-        // Nested findings describe the nested package that was inspected and
-        // sanitized. They are deliberately added after the outer sanitizer has
-        // run so a nested part name can never be mistaken for a top-level part.
-        analyzeEmbeddedPayloads(packageData, findings);
-        actions.addAll(new PPTXThreatSanitizer().sanitize(packageData, findings));
         findings.addAll(recursiveFindings);
-        new OOXMLPackageWriter().write(packageData, outputFile);
+        if (printConsoleFindings) CDRConsoleReporter.printAnalyzerFindings("PPTX", findings);
 
+        if (!containsBlockingFinding(findings)) {
+            CDRFileUtil.copyOriginal(inputFile, outputFile);
+            String outputSha256 = CDRFileUtil.sha256(outputFile);
+            if (!inputSha256.equals(outputSha256)) throw new java.io.IOException("Clean PPTX copy failed SHA-256 identity verification.");
+            actions.add("Input verified clean; original PPTX copied without reconstruction.");
+            return new CDRResult(findings, actions, outputFile, false, true, true,
+                    new ArrayList<>(), inputSha256, outputSha256, true);
+        }
+
+        actions.addAll(new PPTXThreatSanitizer().sanitize(packageData, findings));
+        new OOXMLPackageWriter().write(packageData, outputFile);
         boolean reconstructed = Files.exists(outputFile) && Files.size(outputFile) > 0;
         boolean integrityPassed = false;
         boolean threatsRemoved = false;
-        if (reconstructed) {
+        List<SecurityFinding> finalFindings = new ArrayList<>();
+
+        // Bounded post-reconstruction hardening loop. Re-read and re-analyze
+        // after each rewrite so newly exposed package-graph findings can be
+        // disarmed without immediately quarantining the document.
+        for (int pass = 1; reconstructed && pass <= 3; pass++) {
             OOXMLPackage reread = reader.read(outputFile);
             integrityPassed = new OOXMLIntegrityValidator().validate(reread);
-            threatsRemoved = !containsBlockingFinding(new PPTXThreatAnalyzer().analyze(reread))
-                    && !containsEmbeddedNativePayload(reread)
-                    && !recursiveSanitizer.hasBlockingEmbeddedContent(reread);
-        }
+            finalFindings = new ArrayList<>();
+            finalFindings.addAll(new PPTXThreatAnalyzer().analyze(reread));
+            boolean embeddedSafe = !recursiveSanitizer.hasBlockingEmbeddedContent(reread);
+            threatsRemoved = integrityPassed && !containsBlockingFinding(finalFindings) && embeddedSafe;
+            if (threatsRemoved) break;
 
+            if (pass < 3 && containsBlockingFinding(finalFindings)) {
+                actions.addAll(new PPTXThreatSanitizer().sanitize(reread, finalFindings));
+                RecursiveOOXMLSanitizer.Result retryRecursive =
+                        recursiveSanitizer.sanitizeEmbeddedPackages(reread, finalFindings);
+                actions.addAll(retryRecursive.getActions());
+                new OOXMLPackageWriter().write(reread, outputFile);
+            }
+        }
+        if (printConsoleFindings) CDRConsoleReporter.printFinalFindings("PPTX", finalFindings);
+        if (!finalFindings.isEmpty()) actions.add("Post-reconstruction security verification found remaining PPTX findings.");
+
+        String outputSha256 = reconstructed ? CDRFileUtil.sha256(outputFile) : null;
         return new CDRResult(findings, actions, outputFile, reconstructed,
-                integrityPassed, threatsRemoved);
-    }
-
-    private void analyzeEmbeddedPayloads(OOXMLPackage packageData,
-                                         List<SecurityFinding> findings) throws Exception {
-        Ole10NativeAnalyzer nativeAnalyzer = new Ole10NativeAnalyzer();
-        PayloadIdentifier identifier = new PayloadIdentifier();
-        PayloadFingerprint fingerprint = new PayloadFingerprint();
-        SecurityPolicy policy = new SecurityPolicy();
-
-        for (OOXMLPart part : packageData.getParts()) {
-            if (part == null || part.getPartName() == null ||
-                    !part.getPartName().toLowerCase().contains("/embeddings/") ||
-                    part.getData() == null || part.getData().length == 0) continue;
-
-            try (POIFSFileSystem fs = new POIFSFileSystem(
-                    new ByteArrayInputStream(part.getData()))) {
-                DirectoryNode root = fs.getRoot();
-                for (Ole10NativeAnalyzer.NativePayload payload : nativeAnalyzer.inspect(root)) {
-                    if (payload == null) continue;
-                    PayloadIdentifier.Identification id = identifier.identify(
-                            payload.getFilename(), payload.getPayload());
-                    PayloadFingerprint.Fingerprint fp = fingerprint.fingerprint(payload.getPayload());
-                    findings.addAll(policy.evaluate(id, fp, part));
-                }
-            } catch (Exception ignored) {
-                // The common analyzer has already classified the embedded boundary.
-                // A non-OLE embedded object is not parsed as OLE here.
-            }
-        }
-    }
-
-    private boolean containsEmbeddedNativePayload(OOXMLPackage packageData) {
-        if (packageData == null) return true;
-        Ole10NativeAnalyzer analyzer = new Ole10NativeAnalyzer();
-        for (OOXMLPart part : packageData.getParts()) {
-            if (part == null || part.getPartName() == null || part.getData() == null ||
-                    !part.getPartName().toLowerCase().contains("/embeddings/")) continue;
-            try (POIFSFileSystem fs = new POIFSFileSystem(new ByteArrayInputStream(part.getData()))) {
-                if (!analyzer.inspect(fs.getRoot()).isEmpty()) return true;
-            } catch (Exception ignored) {
-                // Not an OLE compound file; common package analysis covers it.
-            }
-        }
-        return false;
+                integrityPassed, threatsRemoved, finalFindings, inputSha256, outputSha256, false);
     }
 
     private boolean containsBlockingFinding(List<SecurityFinding> findings) {
@@ -115,7 +95,8 @@ public class PPTXCDRProcessor implements CDRProcessor {
         for (SecurityFinding finding : findings) {
             if (finding != null &&
                     (finding.getClassification() == FindingClassification.THREAT ||
-                     finding.getClassification() == FindingClassification.POLICY_VIOLATION)) return true;
+                     finding.getClassification() == FindingClassification.POLICY_VIOLATION ||
+                     finding.getClassification() == FindingClassification.SUSPICIOUS)) return true;
         }
         return false;
     }

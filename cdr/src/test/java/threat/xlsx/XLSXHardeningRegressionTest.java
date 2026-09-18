@@ -4,6 +4,7 @@ import model.ooxml.OOXMLPackage;
 import model.ooxml.OOXMLPart;
 import model.ooxml.OOXMLRelationship;
 import sanitization.common.OOXMLThreatSanitizer;
+import sanitization.xlsx.XLSXThreatSanitizer;
 import parsing.ooxml.OOXMLPackageReader;
 import reconstruction.OOXMLPackageWriter;
 import validation.ooxml.OOXMLIntegrityValidator;
@@ -20,6 +21,8 @@ import java.util.List;
 public final class XLSXHardeningRegressionTest {
     public static void main(String[] args) {
         testAllActiveFormulaFunctionsAreRemoved();
+        testCommandPipeDdeFormulaAndCacheAreRemoved();
+        testDdeExternalLinkPartIsRemoved();
         testDefinedNameActiveFormulaIsRemoved();
         testNormalFormulaIsPreserved();
         testNormalHttpsHyperlinkIsPreserved();
@@ -48,6 +51,29 @@ public final class XLSXHardeningRegressionTest {
             require(!xml.contains("<f>"), "active formula survived: " + formula);
             require(xml.contains("<v>99</v>"), "cached value lost: " + formula);
         }
+    }
+
+    private static void testCommandPipeDdeFormulaAndCacheAreRemoved() {
+        OOXMLPackage p = sheetPackage("<c r=\"A1\"><f>cmd|/C powershell.exe -NoExit -e AAA!A0</f><v>EICAR-STANDARD-ANTIVIRUS-TEST-FILE</v></c>");
+        List<SecurityFinding> findings = new XLSXThreatAnalyzer().analyze(p);
+        require(findings.stream().anyMatch(f -> f.getType() == ThreatType.DDE), "command-pipe DDE was not detected");
+        new OOXMLThreatSanitizer().sanitize(p, findings);
+        String xml = text(p.getPart("xl/worksheets/sheet1.xml"));
+        require(!xml.contains("cmd|/C"), "command-pipe DDE formula survived");
+        require(!xml.contains("EICAR-STANDARD-ANTIVIRUS-TEST-FILE"), "DDE cached payload survived");
+    }
+
+    private static void testDdeExternalLinkPartIsRemoved() {
+        OOXMLPackage p = workbookPackage("<workbook/>");
+        String dde = "<externalLink><ddeLink><ddeService>cmd</ddeService><ddeTopic>/C powershell.exe</ddeTopic></ddeLink></externalLink>";
+        p.addPart(new OOXMLPart("xl/externalLinks/externalLink1.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.externalLink+xml", dde.getBytes(StandardCharsets.UTF_8)));
+        p.addRelationship(new OOXMLRelationship("xl/workbook.xml", "rIdDde", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/externalLink", "externalLinks/externalLink1.xml", null));
+        p.addContentType("xl/externalLinks/externalLink1.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.externalLink+xml");
+        List<SecurityFinding> findings = new XLSXThreatAnalyzer().analyze(p);
+        require(findings.stream().anyMatch(f -> f.getType() == ThreatType.DDE), "DDE external-link part was not detected");
+        new XLSXThreatSanitizer().sanitize(p, findings);
+        require(!p.hasPart("xl/externalLinks/externalLink1.xml"), "DDE external-link part survived");
+        require(p.getRelationships().stream().noneMatch(r -> "rIdDde".equals(r.getId())), "DDE external-link relationship survived");
     }
 
     private static void testDefinedNameActiveFormulaIsRemoved() {

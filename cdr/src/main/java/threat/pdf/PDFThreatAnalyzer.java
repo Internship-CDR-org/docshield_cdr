@@ -78,6 +78,12 @@ public final class PDFThreatAnalyzer {
             pageNumber++;
         }
 
+        // Object-graph inspection cannot see payload bytes hidden inside arbitrary
+        // PDF streams. Run the byte-level stream inspector as a complementary
+        // security pass so executable payloads are not trusted merely because
+        // their containing dictionary lacks a Filespec/active-content marker.
+        findings.addAll(new PDFStreamThreatInspector().inspect(document));
+
         return deduplicate(findings);
     }
 

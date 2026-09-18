@@ -8,6 +8,7 @@ import threat.common.SecurityFinding;
 import threat.common.ThreatSeverity;
 import threat.common.ThreatType;
 import threat.ooxml.OOXMLThreatAnalyzer;
+import threat.ooxml.OLEAnalyzer;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -58,6 +59,7 @@ public final class XLSXThreatAnalyzer {
         if (packageData == null) return findings;
 
         findings.addAll(common.analyze(packageData));
+        findings.addAll(new OLEAnalyzer().analyze(packageData));
         analyzeExcelParts(packageData, findings);
         analyzeExcelRelationships(packageData, findings);
         deduplicate(findings);

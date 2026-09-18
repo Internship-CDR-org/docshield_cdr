@@ -6,12 +6,21 @@ import parsing.common.AppMetadataParser;
 
 import model.common.DocumentModel;
 import model.common.ComponentCategory;
+import model.common.TextComponent;
+import model.common.ImageComponent;
+import model.common.EmbeddedObjectComponent;
+import model.common.StructureComponent;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Enumeration;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+import java.io.InputStream;
+import java.net.URLConnection;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 
 public class DOCXParser implements DocumentParser {
 
@@ -42,6 +51,61 @@ public class DOCXParser implements DocumentParser {
 
         for (String value : text) {
             model.addContent(value);
+        }
+
+        // Populate the common IR used by ReportWriter.
+        for (TextComponent component :
+                contentParser.parseTextComponents(file)) {
+            model.addTextComponent(component);
+        }
+
+        // Populate image components with the actual package bytes.
+        try (ZipFile zipFile = new ZipFile(file.toFile())) {
+            int imageIndex = 0;
+            for (String imageName : resourceParser.parseImages(file)) {
+                ZipEntry entry = zipFile.getEntry(imageName);
+                if (entry == null) {
+                    continue;
+                }
+                byte[] data;
+                try (InputStream input = zipFile.getInputStream(entry)) {
+                    data = input.readAllBytes();
+                }
+                ImageComponent image = new ImageComponent();
+                image.setId("image_" + imageIndex++);
+                image.setFileName(imageName);
+                image.setMimeType(URLConnection.guessContentTypeFromName(imageName));
+                image.setData(data);
+
+                try (ByteArrayInputStream imageInput =
+                             new ByteArrayInputStream(data)) {
+                    BufferedImage decoded = ImageIO.read(imageInput);
+                    if (decoded != null) {
+                        image.setWidth(decoded.getWidth());
+                        image.setHeight(decoded.getHeight());
+                    }
+                }
+
+                model.addImageComponent(image);
+            }
+
+            int objectIndex = 0;
+            for (String objectName : resourceParser.parseEmbeddedObjects(file)) {
+                ZipEntry entry = zipFile.getEntry(objectName);
+                if (entry == null) {
+                    continue;
+                }
+                byte[] data;
+                try (InputStream input = zipFile.getInputStream(entry)) {
+                    data = input.readAllBytes();
+                }
+                EmbeddedObjectComponent object = new EmbeddedObjectComponent();
+                object.setId("embedded_" + objectIndex++);
+                object.setName(objectName);
+                object.setType(URLConnection.guessContentTypeFromName(objectName));
+                object.setData(data);
+                model.addEmbeddedObjectComponent(object);
+            }
         }
 
         try (ZipFile zipFile = new ZipFile(file.toFile())) {
@@ -75,10 +139,26 @@ public class DOCXParser implements DocumentParser {
 
                     case STRUCTURE:
                         model.addStructure(name);
+                        StructureComponent structure =
+                                new StructureComponent(
+                                        "structure_" + model.getStructureComponents().size(),
+                                        "DOCX_STRUCTURE",
+                                        name,
+                                        model.getStructureComponents().size()
+                                );
+                        model.addStructureComponent(structure);
                         break;
 
                     case RELATIONSHIP:
                         model.addRelationship(name);
+                        StructureComponent relationship =
+                                new StructureComponent(
+                                        "relationship_" + model.getStructureComponents().size(),
+                                        "DOCX_RELATIONSHIP",
+                                        name,
+                                        model.getStructureComponents().size()
+                                );
+                        model.addStructureComponent(relationship);
                         break;
 
                     default:

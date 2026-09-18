@@ -83,7 +83,26 @@ public final class PDFThreatSanitizer {
         }
 
         sanitizeDictionary(catalog, "catalog", actions, visited);
+        sanitizeXrefObjects(document, actions, visited);
         return actions;
+    }
+
+    private void sanitizeXrefObjects(PDDocument document, List<String> actions, Set<COSBase> visited) {
+        try {
+            var cosDocument = document.getDocument();
+            for (var key : cosDocument.getXrefTable().keySet()) {
+                var object = cosDocument.getObjectFromPool(key);
+                COSBase value = object == null ? null : object.getObject();
+                if (value instanceof COSDictionary dict) {
+                    sanitizeDictionary(dict, "xref " + key, actions, visited);
+                }
+            }
+        } catch (Exception ex) {
+            // Detection already reports an incomplete xref inspection as a
+            // blocking finding. Keep sanitization best-effort here; the processor
+            // will not release the document when verification remains incomplete.
+            actions.add("Xref/object-pool sanitization could not be completed: " + ex.getClass().getSimpleName() + ".");
+        }
     }
 
     private void sanitizePageAnnotations(PDPage page, int pageNumber,
@@ -143,6 +162,20 @@ public final class PDFThreatSanitizer {
     private void sanitizeDictionary(COSDictionary dict, String location,
                                     List<String> actions, Set<COSBase> visited) {
         if (dict == null || !visited.add(dict)) return;
+
+        // A high-confidence executable signature inside a decoded stream must not
+        // survive reconstruction. Emptying the stream preserves the surrounding
+        // PDF object graph while removing the payload bytes. This is deliberately
+        // narrower than deleting ordinary image/font/content streams.
+        if (dict instanceof org.apache.pdfbox.cos.COSStream stream &&
+                threat.pdf.PDFStreamThreatInspector.isExecutableStream(stream)) {
+            try (java.io.OutputStream out = stream.createOutputStream()) {
+                // truncate decoded stream contents
+            } catch (java.io.IOException ex) {
+                actions.add("Failed to neutralize an executable PDF stream at " + location + ".");
+            }
+            actions.add("Neutralized executable payload stream at " + location + ".");
+        }
 
         removeIfPresent(dict, COSName.JS, actions, "Removed JavaScript entry from " + location + ".");
         removeIfPresent(dict, COSName.getPDFName("JavaScript"), actions, "Removed JavaScript entry from " + location + ".");

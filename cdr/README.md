@@ -9,7 +9,8 @@ DocShield provides a security pipeline that intercepts incoming files, audits th
 The engine supports the following document formats:
 - **Modern Open XML (OOXML)**: Word (`DOCX`), PowerPoint (`PPTX`), Excel (`XLSX`).
 - **Legacy Microsoft Office (OLE)**: Word (`DOC`), PowerPoint (`PPT`), Excel (`XLS`).
-- **Standard Document Formats**: Portable Document Format (`PDF`), Rich Text Format (`RTF`).
+- **Document Formats in current CDR release**: Portable Document Format (`PDF`).
+- **Deferred format**: Rich Text Format (`RTF`) — parser code exists, but RTF is intentionally disabled in the release path until a complete CDR pipeline is implemented.
 
 ## 3. Core Architecture Overview
 DocShield uses a modular pipeline organized as follows:
@@ -46,7 +47,8 @@ DocShield uses a modular pipeline organized as follows:
 ## 4. Current Reconstruction Capabilities
 - **OOXML Reconstruction (DOCX, PPTX, XLSX)**: One shared `OOXMLPackage` + `OOXMLPackageWriter` path. Physical parts and relationships are preserved generically; `.rels` files and `[Content_Types].xml` are regenerated from the sanitized package model.
 - **Legacy office files (DOC, PPT, XLS)**: Reconstructed by converting the legacy binary formats to modern OOXML formats (DOCX, PPTX, XLSX) via a headless LibreOffice converter fallback, which are then processed and written out as sanitized OOXML files.
-- **PDF & RTF**: Parsing and threat analysis are fully implemented. Extracted features and detected threat warnings are written to the CDR analysis report, but no reconstructed file is generated.
+- **PDF**: Multi-pass security analysis, sanitization, reconstruction, integrity validation, post-reconstruction security verification, and SHA-256-preserving clean-copy behavior are implemented.
+- **RTF**: Deferred. It is not released as a CDR format and is quarantined by the CLI rather than being presented as safely reconstructed.
 
 ## 5. Threat Detection & Sanitization Capabilities
 - **VBA Macro Disarming**: Detects macro projects (`vbaproject.bin`) inside DOCX, XLSX, and legacy OLE files. Sanitization deletes the macro files and removes all associated relationship references.
@@ -119,6 +121,6 @@ mvn test
 - **CDR Reports**: Saved to `output/reports/<filename>_CDR_Report.txt`.
 
 ## 11. Known Limitations & Implementation Status
-- **Reconstruction Constraints**: Direct reconstruction is only implemented for DOCX, PPTX, and XLSX formats. PDF and RTF documents are parsed for threat reporting only.
+- **RTF CDR**: Intentionally deferred to a later hardening phase. The current CLI does not release RTF files as sanitized documents.
 - **LibreOffice Dependency**: Legacy format processing (DOC, PPT, XLS) depends on the system having an external `libreoffice` binary in the PATH for fallback conversion. Fallback parsing will fail if LibreOffice is not installed.
 - **Security coverage is capability-based and incremental**: the common OOXML layer covers structural active-content and external-resource classes; format-specific attack surfaces continue to be added under the same common threat/sanitization contracts. Unknown vulnerabilities cannot be guaranteed by signature matching alone.

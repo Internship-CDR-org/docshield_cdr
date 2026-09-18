@@ -20,7 +20,7 @@ The purpose of the `parsing.doc` directory is to extract text, metadata, images,
 - `ParserFactory` returns `DOCParser` when the detected format is `DOC`.
 - The parser tries native POI HWPF parsing first.
 - If POI extraction fails or is validated as empty (empty text, zero images, zero objects), `DOCParser` invokes `DOCToDOCXConverter`.
-- The converter converts the document to DOCX using LibreOffice.
+- The converter converts the document to DOCX using an isolated, headless LibreOffice subprocess with a private temporary user profile and bounded conversion resources.
 - `DOCParser` then runs `DOCXParser` on the converted file and deletes the temporary file afterwards.
 
 ```
@@ -57,7 +57,7 @@ The purpose of the `parsing.doc` directory is to extract text, metadata, images,
 - **Fallback Execution**: Coordinates the execution paths. It catches POI runtime failures, logs validation details to `DOCParseResult`, and routes to the fallback path.
 
 ### `DOCToDOCXConverter`
-- **Subprocess Management**: Builds a `ProcessBuilder` with `libreoffice --headless --convert-to docx --outdir <temp-dir> <input-file>`. Reads process input streams and awaits completion.
+- **Subprocess Management**: Builds a `ProcessBuilder` for headless LibreOffice with a private `UserInstallation`, dedicated temporary workspace, timeout, input/output size limits, bounded diagnostic capture, and forced process-tree termination on timeout/resource exhaustion.
 
 ### `DOCExtractionValidator`
 - **Sanity Audits**: Evaluates `DOCParseResult` metrics. If the native extractor found zero text characters, images, and embedded objects, it declares the extraction invalid, triggering fallback.

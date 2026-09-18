@@ -51,6 +51,11 @@ public final class OOXMLThreatSanitizer implements Sanitizer<OOXMLPackage> {
     private static final Pattern DDE_INSTR = Pattern.compile(
             "(?is)<(?:[A-Za-z_][\\w.-]*:)?instrText\\b[^>]*>.*?\\bDDE(?:AUTO)?\\b.*?</(?:[A-Za-z_][\\w.-]*:)?instrText\\s*>"
     );
+    /** Excel DDE command/data-source formula form, e.g. cmd|/C powershell.exe ...!A0. */
+    private static final Pattern EXCEL_DDE_COMMAND_FORMULA = Pattern.compile(
+            "(?is)(?:^|[\"\'])(?:cmd(?:\\.exe)?|powershell(?:\\.exe)?|pwsh(?:\\.exe)?|wscript(?:\\.exe)?|cscript(?:\\.exe)?|mshta(?:\\.exe)?|rundll32(?:\\.exe)?)[^!\r\n]{0,8192}\\![A-Za-z]{1,3}\\$?\\d+"
+    );
+
     private static final Pattern WORD_EXTERNAL_FIELD = Pattern.compile(
             "(?is)<(?:[A-Za-z_][\\w.-]*:)?fldSimple\\b[^>]*\\b(?:INCLUDE|INCLUDETEXT|INCLUDEPICTURE|LINK|IMPORT)\\b[^>]*>.*?</(?:[A-Za-z_][\\w.-]*:)?fldSimple\\s*>|" +
             "<(?:[A-Za-z_][\\w.-]*:)?instrText\\b[^>]*>.*?\\b(?:INCLUDE|INCLUDETEXT|INCLUDEPICTURE|LINK|IMPORT)\\b.*?</(?:[A-Za-z_][\\w.-]*:)?instrText\\s*>"
@@ -96,12 +101,26 @@ public final class OOXMLThreatSanitizer implements Sanitizer<OOXMLPackage> {
                     break;
 
                 case DDE:
+                    if (finding.getPartName() != null &&
+                            finding.getPartName().toLowerCase(Locale.ROOT).startsWith("xl/externallinks/")) {
+                        removeUnsafePart(packageData, finding.getPartName(), actions, removedParts);
+                    } else {
+                        sanitizeXmlPart(packageData, finding, actions);
+                    }
+                    break;
                 case MALICIOUS_XML:
                 case DANGEROUS_ACTION:
-                case INVALID_RELATIONSHIP:
                 case AUTO_UPDATE_FIELDS:
                 case ACTIVE_FORMULA:
                     sanitizeXmlPart(packageData, finding, actions);
+                    break;
+
+                case INVALID_RELATIONSHIP:
+                    sanitizeXmlPart(packageData, finding, actions);
+                    break;
+
+                case MISSING_TARGET:
+                    removeRelationship(packageData, finding, actions);
                     break;
 
                 case VBA_PROJECT:
@@ -140,6 +159,7 @@ public final class OOXMLThreatSanitizer implements Sanitizer<OOXMLPackage> {
         }
 
         cleanupOrphanedContentTypes(packageData, removedParts, actions);
+        cleanupDanglingRelationshipReferences(packageData, actions);
         return actions;
     }
 
@@ -215,8 +235,12 @@ public final class OOXMLThreatSanitizer implements Sanitizer<OOXMLPackage> {
             case DDE:
                 if (partName.toLowerCase(Locale.ROOT).startsWith("word/")) {
                     // Word field instructions may be fragmented across runs.
-                    // Remove only the instruction and preserve cached result text.
                     xml = stripWordFieldInstructions(xml, "DDE(?:AUTO)?");
+                } else if (partName.toLowerCase(Locale.ROOT).startsWith("xl/")) {
+                    // Excel DDE is active external execution/data resolution.
+                    // Do not preserve its cached result blindly: the cache can
+                    // contain attacker-controlled payload text.
+                    xml = removeExcelDdeFormulaElements(xml);
                 } else {
                     xml = DDE_FIELD.matcher(xml).replaceAll("");
                     xml = DDE_INSTR.matcher(xml).replaceAll("");
@@ -378,6 +402,11 @@ public final class OOXMLThreatSanitizer implements Sanitizer<OOXMLPackage> {
         return sanitizeExcelFormulaElements(xml, true, false);
     }
 
+    private String removeExcelDdeFormulaElements(String xml) {
+        String withoutCache = clearDdeCachedValues(xml);
+        return sanitizeExcelFormulaElements(withoutCache, false, false);
+    }
+
     /**
      * Removes active/dangerous Excel formula instructions while preserving
      * the containing cell and cached result. This also handles definedName
@@ -400,19 +429,19 @@ public final class OOXMLThreatSanitizer implements Sanitizer<OOXMLPackage> {
         while (m.find()) {
             String element = m.group();
             String formulaText = element.replaceAll("(?is)<[^>]+>", "");
-            boolean remove = false;
+            boolean dde = containsDde(formulaText);
+            boolean remove = dde;
             if (externalWorkbook) {
-                remove = formulaText.matches("(?is).*\\[[^\\]]+\\][^!\\s]+!.*")
-                        || formulaText.matches("(?is).*\\bDDE(?:AUTO)?\\b.*");
+                remove = remove || formulaText.matches("(?is).*\\[[^\\]]+\\][^!\\s]+!.*");
             }
             if (active) {
                 remove = remove || containsDangerousExcelFunction(formulaText)
-                        || containsDangerousHyperlink(formulaText)
-                        || containsDde(formulaText);
+                        || containsDangerousHyperlink(formulaText);
             }
             m.appendReplacement(out, remove ? "" : Matcher.quoteReplacement(element));
         }
         m.appendTail(out);
+
 
         // Excel defined names store formulas as element text in workbook.xml.
         // They do not use <f>, so remove only the unsafe defined-name element.
@@ -424,19 +453,37 @@ public final class OOXMLThreatSanitizer implements Sanitizer<OOXMLPackage> {
         while (dn.find()) {
             String element = dn.group();
             String formulaText = element.replaceAll("(?is)<[^>]+>", "");
-            boolean remove = false;
+            boolean remove = containsDde(formulaText);
             if (externalWorkbook) {
-                remove = formulaText.matches("(?is).*\\[[^\\]]+\\][^!\\s]+!.*");
+                remove = remove || formulaText.matches("(?is).*\\[[^\\]]+\\][^!\\s]+!.*");
             }
             if (active) {
                 remove = remove || containsDangerousExcelFunction(formulaText)
-                        || containsDangerousHyperlink(formulaText)
-                        || containsDde(formulaText);
+                        || containsDangerousHyperlink(formulaText);
             }
             dn.appendReplacement(dnOut, remove ? "" : Matcher.quoteReplacement(element));
         }
         dn.appendTail(dnOut);
         return dnOut.toString();
+    }
+
+    private String clearDdeCachedValues(String xml) {
+        if (xml == null || xml.isEmpty()) return xml;
+        Pattern cell = Pattern.compile("(?is)<(?:[A-Za-z_][\\w.-]*:)?c\\b([^>]*)>(.*?)</(?:[A-Za-z_][\\w.-]*:)?c\\s*>");
+        Matcher cm = cell.matcher(xml);
+        StringBuffer out = new StringBuffer();
+        while (cm.find()) {
+            String body = cm.group(2);
+            Matcher fm = Pattern.compile("(?is)<(?:[A-Za-z_][\\w.-]*:)?f\\b[^>]*>(.*?)</(?:[A-Za-z_][\\w.-]*:)?f\\s*>").matcher(body);
+            if (!fm.find() || !containsDde(fm.group(1).replaceAll("(?is)<[^>]+>", ""))) {
+                cm.appendReplacement(out, Matcher.quoteReplacement(cm.group()));
+                continue;
+            }
+            String cleanedBody = body.replaceAll("(?is)<(?:[A-Za-z_][\\w.-]*:)?v\\b[^>]*>.*?</(?:[A-Za-z_][\\w.-]*:)?v\\s*>", "");
+            cm.appendReplacement(out, Matcher.quoteReplacement("<c" + cm.group(1) + ">" + cleanedBody + "</c>"));
+        }
+        cm.appendTail(out);
+        return out.toString();
     }
 
     private boolean containsDangerousExcelFunction(String formula) {
@@ -451,7 +498,9 @@ public final class OOXMLThreatSanitizer implements Sanitizer<OOXMLPackage> {
     }
 
     private boolean containsDde(String formula) {
-        return formula != null && Pattern.compile("(?i)\\bDDE(?:AUTO)?\\b").matcher(formula).find();
+        if (formula == null) return false;
+        return Pattern.compile("(?i)\\bDDE(?:AUTO)?\\b").matcher(formula).find()
+                || EXCEL_DDE_COMMAND_FORMULA.matcher(formula).find();
     }
     private String removeDangerousPptxActions(OOXMLPackage pkg,
                                               String sourcePart,
@@ -634,6 +683,41 @@ public final class OOXMLThreatSanitizer implements Sanitizer<OOXMLPackage> {
         return n.equals("xl/connections.xml") || n.startsWith("xl/externallinks/") ||
                 n.startsWith("xl/querytables/") || n.startsWith("xl/querytables/") ||
                 n.endsWith("/externalconnections.xml");
+    }
+
+    /**
+     * Final graph-closure sweep: remove any r:id/r:embed/r:link attribute
+     * whose ID is no longer present for the owning source part. This is
+     * deliberately generic because a sanitizer can remove a relationship
+     * indirectly (for example while disarming an action or embedded object).
+     */
+    private void cleanupDanglingRelationshipReferences(OOXMLPackage pkg, List<String> actions) {
+        if (pkg == null) return;
+        for (OOXMLPart part : pkg.getParts()) {
+            if (part == null || part.getPartName() == null || part.getData() == null || !isXmlPart(part)) continue;
+            String xml = new String(part.getData(), StandardCharsets.UTF_8);
+            Matcher m = REL_REFERENCE.matcher(xml);
+            StringBuffer out = new StringBuffer();
+            boolean changed = false;
+            while (m.find()) {
+                String id = m.group(1);
+                boolean exists = false;
+                for (OOXMLRelationship r : pkg.getRelationshipsFrom(part.getPartName())) {
+                    if (r != null && id.equals(r.getId())) { exists = true; break; }
+                }
+                if (!exists) {
+                    m.appendReplacement(out, "");
+                    changed = true;
+                } else {
+                    m.appendReplacement(out, Matcher.quoteReplacement(m.group()));
+                }
+            }
+            m.appendTail(out);
+            if (changed) {
+                part.setData(out.toString().getBytes(StandardCharsets.UTF_8));
+                actions.add("Removed dangling OOXML relationship references from " + part.getPartName());
+            }
+        }
     }
 
     private void cleanupOrphanedContentTypes(OOXMLPackage pkg,

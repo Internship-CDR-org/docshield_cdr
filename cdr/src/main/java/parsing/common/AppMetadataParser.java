@@ -36,7 +36,7 @@ public class AppMetadataParser {
                          zipFile.getInputStream(entry)) {
 
                 DocumentBuilderFactory factory =
-                        DocumentBuilderFactory.newInstance();
+                        security.sandbox.SecureXmlFactory.createSecureDocumentBuilderFactory();
 
                 factory.setNamespaceAware(true);
 

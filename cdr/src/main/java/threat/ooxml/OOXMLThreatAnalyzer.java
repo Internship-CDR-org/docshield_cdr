@@ -283,11 +283,25 @@ public final class OOXMLThreatAnalyzer
                 continue;
             }
 
-            // Internal relationship with an unsafe target cannot be used as a
-            // normal external URI, so only apply URI policy to external links.
-            if (!external) continue;
+            // Validate the package graph before applying external-URI policy.
+            // A local relationship to a missing part is structurally unsafe even
+            // when its target string does not look like an external URI.
+            if (!external) {
+                String resolved = resolveTarget(r.getSourcePart(), target);
+                if (resolved == null || pkg.getPart(resolved) == null) {
+                    addRel(findings, FindingClassification.SUSPICIOUS, ThreatType.MISSING_TARGET,
+                            ThreatSeverity.HIGH, r,
+                            "OOXML relationship targets a missing local part: " + target,
+                            "The package graph contains a local relationship whose target part does not exist.",
+                            "Remove the dangling relationship and any XML reference to it before reconstruction.");
+                    continue;
+                }
+            }
 
             String lowerTarget = target.toLowerCase(Locale.ROOT);
+
+            // Internal relationships do not participate in external URI policy.
+            if (!external) continue;
 
             if (isDangerousUri(lowerTarget)) {
                 addRel(findings, FindingClassification.THREAT, ThreatType.DANGEROUS_URI,
@@ -330,6 +344,31 @@ public final class OOXMLThreatAnalyzer
                         "Preserve unless policy explicitly requires link removal.");
             }
         }
+    }
+
+    private String resolveTarget(String sourcePart, String target) {
+        if (target == null || target.isBlank()) return null;
+        String t = target.trim().replace('\\', '/');
+        if (t.startsWith("/")) return normalizePath(t.substring(1));
+        String source = sourcePart == null ? "" : sourcePart.replace('\\', '/');
+        int slash = source.lastIndexOf('/');
+        String base = slash < 0 ? "" : source.substring(0, slash);
+        return normalizePath(base.isEmpty() ? t : base + "/" + t);
+    }
+
+    private String normalizePath(String value) {
+        if (value == null) return null;
+        List<String> pieces = new ArrayList<>();
+        for (String piece : value.split("/")) {
+            if (piece.isEmpty() || ".".equals(piece)) continue;
+            if ("..".equals(piece)) {
+                if (pieces.isEmpty()) return null;
+                pieces.remove(pieces.size() - 1);
+            } else {
+                pieces.add(piece);
+            }
+        }
+        return String.join("/", pieces);
     }
 
     private boolean isVbaRelationship(String type) {
@@ -376,29 +415,42 @@ public final class OOXMLThreatAnalyzer
     }
 
     private boolean isExecutableEmbedded(String name, byte[] data) {
-        if (!name.contains("/embeddings/")) return false;
-
-        if (name.endsWith(".exe") || name.endsWith(".dll") || name.endsWith(".com") ||
-                name.endsWith(".scr") || name.endsWith(".bat") || name.endsWith(".cmd") ||
-                name.endsWith(".ps1") || name.endsWith(".vbs") || name.endsWith(".vbe") ||
-                name.endsWith(".js") || name.endsWith(".jse") || name.endsWith(".wsf") ||
-                name.endsWith(".wsc") || name.endsWith(".hta")) return true;
-
         if (data == null || data.length < 2) return false;
 
-        // PE, ELF and Mach-O magic values. Mach-O is included because a
-        // package should not preserve a native executable merely because it
-        // was built for a non-Windows platform.
-        boolean pe = data.length >= 2 && data[0] == 'M' && data[1] == 'Z';
-        boolean elf = data.length >= 4 && data[0] == 0x7f && data[1] == 'E' && data[2] == 'L' && data[3] == 'F';
+        // Do not rely on a filename or /embeddings/ path. A native payload can
+        // be hidden in a misleadingly named package part.
+        String lowerName = name == null ? "" : name.toLowerCase(Locale.ROOT);
+        if (lowerName.endsWith(".exe") || lowerName.endsWith(".dll") ||
+                lowerName.endsWith(".com") || lowerName.endsWith(".scr") ||
+                lowerName.endsWith(".bat") || lowerName.endsWith(".cmd") ||
+                lowerName.endsWith(".ps1") || lowerName.endsWith(".vbs") ||
+                lowerName.endsWith(".vbe") || lowerName.endsWith(".js") ||
+                lowerName.endsWith(".jse") || lowerName.endsWith(".wsf") ||
+                lowerName.endsWith(".wsc") || lowerName.endsWith(".hta")) return true;
+
+        // PE: require MZ plus a valid PE\0\0 signature at e_lfanew. This
+        // avoids treating arbitrary text beginning with the letters "MZ" as
+        // an executable.
+        if (data.length >= 64 && data[0] == 'M' && data[1] == 'Z') {
+            long peOffset = ((long)(data[0x3c] & 0xff)) |
+                    ((long)(data[0x3d] & 0xff) << 8) |
+                    ((long)(data[0x3e] & 0xff) << 16) |
+                    ((long)(data[0x3f] & 0xff) << 24);
+            if (peOffset >= 0 && peOffset <= data.length - 4 &&
+                    data[(int)peOffset] == 'P' && data[(int)peOffset + 1] == 'E' &&
+                    data[(int)peOffset + 2] == 0 && data[(int)peOffset + 3] == 0) return true;
+        }
+
+        boolean elf = data.length >= 4 && data[0] == 0x7f && data[1] == 'E' &&
+                data[2] == 'L' && data[3] == 'F';
         boolean macho32 = data.length >= 4 &&
-                ((data[0] == (byte) 0xFE && data[1] == (byte) 0xED && data[2] == (byte) 0xFA && data[3] == (byte) 0xCE) ||
-                 (data[0] == (byte) 0xCE && data[1] == (byte) 0xFA && data[2] == (byte) 0xED && data[3] == (byte) 0xFE));
+                ((data[0] == (byte)0xFE && data[1] == (byte)0xED && data[2] == (byte)0xFA && data[3] == (byte)0xCE) ||
+                 (data[0] == (byte)0xCE && data[1] == (byte)0xFA && data[2] == (byte)0xED && data[3] == (byte)0xFE));
         boolean macho64 = data.length >= 4 &&
-                ((data[0] == (byte) 0xFE && data[1] == (byte) 0xED && data[2] == (byte) 0xFA && data[3] == (byte) 0xCF) ||
-                 (data[0] == (byte) 0xCF && data[1] == (byte) 0xFA && data[2] == (byte) 0xED && data[3] == (byte) 0xFE));
+                ((data[0] == (byte)0xFE && data[1] == (byte)0xED && data[2] == (byte)0xFA && data[3] == (byte)0xCF) ||
+                 (data[0] == (byte)0xCF && data[1] == (byte)0xFA && data[2] == (byte)0xED && data[3] == (byte)0xFE));
         boolean shebang = data.length >= 2 && data[0] == '#' && data[1] == '!';
-        return pe || elf || macho32 || macho64 || shebang;
+        return elf || macho32 || macho64 || shebang;
     }
 
     private boolean containsTraversal(String name) {

@@ -2,8 +2,10 @@ package processing.pdf;
 
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import processing.common.CDRFileUtil;
 import processing.common.CDRProcessor;
 import processing.common.CDRResult;
+import processing.common.CDRConsoleReporter;
 import sanitization.pdf.PDFThreatSanitizer;
 import threat.common.FindingClassification;
 import threat.common.SecurityFinding;
@@ -29,6 +31,7 @@ public final class PDFCDRProcessor implements CDRProcessor {
     public CDRResult process(Path inputFile, Path outputFile) throws Exception {
         PDFThreatAnalyzer analyzer = new PDFThreatAnalyzer();
         PDFThreatSanitizer sanitizer = new PDFThreatSanitizer();
+        final String inputSha256 = CDRFileUtil.sha256(inputFile);
 
         if (!Files.isRegularFile(inputFile)) {
             throw new java.io.IOException("PDF input is not a regular file.");
@@ -52,28 +55,22 @@ public final class PDFCDRProcessor implements CDRProcessor {
             }
             findings = new ArrayList<>(analyzer.analyze(document));
 
-            System.out.println("=== PDF ANALYZER FINDINGS: " + findings.size() + " ===");
-            for (SecurityFinding f : findings) {
-                System.out.println(
-                    "PDF FINDING: " +
-                    f.getClassification() + " | " +
-                    f.getType() + " | " +
-                    f.getDescription()
-                );
-            }
             // Inspect embedded document bytes before the outer sanitizer removes the
             // attachment boundary. Unsupported or unsafe nested content is fail-closed.
             List<SecurityFinding> embeddedFindings = new threat.pdf.PDFEmbeddedPayloadInspector().inspect(document);
             findings.addAll(embeddedFindings);
 
-            System.out.println("=== PDF FINAL FINDINGS: " + findings.size() + " ===");
-            for (SecurityFinding f : findings) {
-                System.out.println(
-                    "PDF FINAL FINDING: " +
-                    f.getClassification() + " | " +
-                    f.getType() + " | " +
-                    f.getDescription()
-                );
+            CDRConsoleReporter.printAnalyzerFindings("PDF", findings);
+            if (!containsBlockingFinding(findings)) {
+                CDRFileUtil.copyOriginal(inputFile, outputFile);
+                String outputSha256 = CDRFileUtil.sha256(outputFile);
+                if (!inputSha256.equals(outputSha256)) {
+                    throw new java.io.IOException("Clean PDF copy failed byte-for-byte SHA-256 identity verification.");
+                }
+                actions = new ArrayList<>();
+                actions.add("Input verified clean; original PDF copied without reconstruction.");
+                return new CDRResult(findings, actions, outputFile, false, true, true,
+                        new ArrayList<>(), inputSha256, outputSha256, true);
             }
             actions = new ArrayList<>(sanitizer.sanitize(document, findings));
 
@@ -103,21 +100,25 @@ public final class PDFCDRProcessor implements CDRProcessor {
         boolean reconstructed = Files.exists(outputFile) && Files.size(outputFile) > 0;
         boolean integrityPassed = false;
         boolean threatsRemoved = false;
+        List<SecurityFinding> finalFindings = new ArrayList<>();
 
         if (reconstructed) {
             try (PDDocument reread = Loader.loadPDF(outputFile.toFile())) {
                 integrityPassed = new PDFIntegrityValidator().validate(reread);
-                List<SecurityFinding> remaining = new ArrayList<>(analyzer.analyze(reread));
-                remaining.addAll(new threat.pdf.PDFEmbeddedPayloadInspector().inspect(reread));
-                threatsRemoved = !containsBlockingFinding(remaining);
-                if (!threatsRemoved) {
-                    actions.add("Post-reconstruction security verification found remaining blocking PDF content.");
+                finalFindings.addAll(analyzer.analyze(reread));
+                finalFindings.addAll(new threat.pdf.PDFEmbeddedPayloadInspector().inspect(reread));
+                finalFindings.addAll(new threat.pdf.PDFSecuritySurfaceVerifier().verify(reread));
+                threatsRemoved = !containsBlockingFinding(finalFindings);
+                if (!finalFindings.isEmpty()) {
+                    actions.add("Post-reconstruction security verification found remaining PDF findings.");
                 }
             }
         }
+        CDRConsoleReporter.printFinalFindings("PDF", finalFindings);
 
+        String outputSha256 = reconstructed ? CDRFileUtil.sha256(outputFile) : null;
         return new CDRResult(findings, actions, outputFile, reconstructed,
-                integrityPassed, threatsRemoved);
+                integrityPassed, threatsRemoved, finalFindings, inputSha256, outputSha256, false);
     }
 
     private boolean containsBlockingFinding(List<SecurityFinding> findings) {
@@ -125,7 +126,8 @@ public final class PDFCDRProcessor implements CDRProcessor {
         for (SecurityFinding finding : findings) {
             if (finding != null &&
                     (finding.getClassification() == FindingClassification.THREAT ||
-                     finding.getClassification() == FindingClassification.POLICY_VIOLATION)) {
+                     finding.getClassification() == FindingClassification.POLICY_VIOLATION ||
+                     finding.getClassification() == FindingClassification.SUSPICIOUS)) {
                 return true;
             }
         }

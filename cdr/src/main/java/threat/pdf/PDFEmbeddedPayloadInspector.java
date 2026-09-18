@@ -178,7 +178,7 @@ public final class PDFEmbeddedPayloadInspector {
 
     private static boolean hasBlocking(List<SecurityFinding> findings) {
         for (SecurityFinding f : findings) if (f != null &&
-                (f.getClassification() == FindingClassification.THREAT || f.getClassification() == FindingClassification.POLICY_VIOLATION)) return true;
+                (f.getClassification() == FindingClassification.THREAT || f.getClassification() == FindingClassification.POLICY_VIOLATION || f.getClassification() == FindingClassification.SUSPICIOUS)) return true;
         return false;
     }
 

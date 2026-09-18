@@ -107,8 +107,13 @@ public final class RecursiveOOXMLSanitizer {
             byte[] data = part.getData();
             if (depth >= maxDepth || data.length > maxEmbeddedBytes || counter.packages >= maxEmbeddedPackages) return true;
             if (!looksLikeOOXMLZip(data)) {
-                if (looksLikeOle(data) && containsUnsafeOOXMLInsideOle(data, depth + 1, part.getPartName(), new Context(null, new ArrayList<>()))) return true;
-                continue;
+                if (looksLikeOle(data)) {
+                    if (containsUnsafeOOXMLInsideOle(data, depth + 1, part.getPartName(), new Context(null, new ArrayList<>()))) return true;
+                    continue;
+                }
+                // An embedded boundary whose actual format cannot be identified
+                // is not safe to trust merely because its container is valid.
+                return true;
             }
             try {
                 counter.packages++;
@@ -217,7 +222,16 @@ public final class RecursiveOOXMLSanitizer {
                 removeContainingPart(outer, embedded, context,
                         "Unsafe OOXML content detected inside OLE; OLE boundary is not rewritten in-place.");
             }
+            return;
         }
+
+        // Unknown embedded package content is an opaque security boundary.
+        // Remove it rather than allowing an uninspected payload to reach the
+        // clean-copy or release path.
+        markUninspectable(outer, embedded, location,
+                "Embedded package format is not supported for safe inspection.",
+                context,
+                "Remove the containing embedded package.");
     }
 
     private List<SecurityFinding> analyze(OOXMLPackage pkg) {
@@ -444,7 +458,8 @@ public final class RecursiveOOXMLSanitizer {
         if (findings == null) return false;
         for (SecurityFinding f : findings) {
             if (f != null && (f.getClassification() == FindingClassification.THREAT ||
-                    f.getClassification() == FindingClassification.POLICY_VIOLATION)) return true;
+                    f.getClassification() == FindingClassification.POLICY_VIOLATION ||
+                    f.getClassification() == FindingClassification.SUSPICIOUS)) return true;
         }
         return false;
     }
@@ -453,7 +468,8 @@ public final class RecursiveOOXMLSanitizer {
         if (findings != null) {
             for (SecurityFinding f : findings) {
                 if (f != null && (f.getClassification() == FindingClassification.THREAT ||
-                        f.getClassification() == FindingClassification.POLICY_VIOLATION)) {
+                        f.getClassification() == FindingClassification.POLICY_VIOLATION ||
+                        f.getClassification() == FindingClassification.SUSPICIOUS)) {
                     return f.getType() + " at " + f.getPartName();
                 }
             }

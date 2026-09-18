@@ -2,7 +2,7 @@
 output/
 
 # Test samples / threat corpus
-samples/
+samples/eicar-standard-antivirus-test-files/
 
 # Documentation
 docs/

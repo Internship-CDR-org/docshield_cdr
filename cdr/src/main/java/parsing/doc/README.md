@@ -45,5 +45,3 @@ Before conversion, the legacy threat-analysis layer can inspect the original bin
 ## Failure behavior
 
 A conversion failure, timeout, output-limit violation, malformed result, or subsequent DOCX parsing failure is treated as a processing failure. The release path is fail-closed and the input is quarantined by the application gatekeeper.
-
-See docs/ERROR_HANDLING.md for the operator-facing error catalog.

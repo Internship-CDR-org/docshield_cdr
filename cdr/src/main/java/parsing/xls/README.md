@@ -46,5 +46,3 @@ The former standalone HSSF content/metadata/resource/structure/hyperlink helpers
 ## Failure behavior
 
 If conversion fails, times out, exceeds resource limits, produces no valid XLSX, or the converted XLSX cannot be safely processed, the release path fails closed and the input is quarantined.
-
-See docs/ERROR_HANDLING.md.

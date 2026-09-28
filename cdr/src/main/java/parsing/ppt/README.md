@@ -44,5 +44,3 @@ The old standalone HSLF hyperlink/structure helper classes are not part of the c
 ## Failure behavior
 
 Conversion or post-conversion PPTX parsing failures fail closed. The main application deletes any partial output and quarantines the input.
-
-See docs/ERROR_HANDLING.md.

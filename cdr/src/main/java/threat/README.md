@@ -25,4 +25,5 @@ DocShield inspects document packages to detect **active capabilities**—feature
 - [`threat.pptx`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/pptx/README.md): PowerPoint-specific threat detection (PresentationML interactive actions, ctrlProps, SVG active content, embedded payloads).
 - [`threat.xlsx`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/xlsx/README.md): Excel-specific threat detection (XLM macro sheets, DDE formulas, external workbook links, active formula functions, data connections).
 - [`threat.legacy`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/legacy/README.md): Pre-conversion threat analysis for legacy binary formats (DOC, PPT, XLS).
+- [`threat.rtf`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/rtf/README.md): RTF threat analyzer for embedded objects, Equation Editor exploits, DDE, and dangerous hyperlinks.
 - [`threat.pdf`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/pdf/README.md): Multi-pass PDF security analyzer, embedded payload inspector, decoded stream inspector, and post-reconstruction surface verifier.

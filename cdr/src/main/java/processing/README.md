@@ -39,6 +39,8 @@ processing/
 │   └── PPTCDRProcessor.java
 ├── xls/                           # Legacy XLS -> sandboxed conversion -> XLSX CDR
 │   └── XLSCDRProcessor.java
+├── rtf/                           # RTF dedicated CDR pipeline orchestrator
+│   └── RTFCDRProcessor.java
 └── pdf/                           # Multi-pass PDF disarmer & verifier
     └── PDFCDRProcessor.java
 ```
@@ -56,7 +58,7 @@ processing/
          ┌────────────────┴────────────────┐
          ▼                                 ▼
    Modern Formats                    Legacy Formats
-  (DOCX, PPTX, XLSX, PDF)            (DOC, PPT, XLS)
+(DOCX, PPTX, XLSX, PDF, RTF)         (DOC, PPT, XLS)
          │                                 │
          │                        1. Pre-Conversion Analysis
          │                           (inspect legacy binary)

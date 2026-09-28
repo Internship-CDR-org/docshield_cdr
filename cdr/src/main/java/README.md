@@ -39,7 +39,7 @@ java -cp "$CLASSPATH" Main <input-file> <output-file>
                                      │
               ┌──────────────────────┴──────────────────────┐
               ▼                                             ▼
-       Unknown / Spoofed / RTF                       Valid Supported Format
+       Unknown / Spoofed                             Valid Supported Format
               │                                             │
               ▼                                             ▼
        Quarantine & Exit (2)                         3. CDRProcessor Selection
@@ -50,6 +50,7 @@ java -cp "$CLASSPATH" Main <input-file> <output-file>
                                                         • PPT  -> PPTCDRProcessor
                                                         • XLS  -> XLSCDRProcessor
                                                         • PDF  -> PDFCDRProcessor
+                                                        • RTF  -> RTFCDRProcessor
                                                             │
                                                             ▼
                                                      4. Execution (processor.process)

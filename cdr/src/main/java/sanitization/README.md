@@ -35,6 +35,9 @@ sanitization/
 ├── xlsx/
 │   ├── README.md                  # XLSX sanitization specifics
 │   └── XLSXThreatSanitizer.java   # Thin adapter delegating to OOXMLThreatSanitizer
+├── rtf/
+│   ├── README.md                  # RTF sanitization specifics
+│   └── RTFThreatSanitizer.java    # Surgical RTF object and construct disarmer
 └── pdf/
     ├── README.md                  # PDF sanitization specifics
     └── PDFThreatSanitizer.java    # Native PDFBox catalog and annotation disarmer
@@ -51,6 +54,9 @@ sanitization/
 
 ### `sanitization.docx`, `pptx`, `xlsx`
 - Thin format-specific entry points ([`DOCXThreatSanitizer`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/sanitization/docx/DOCXThreatSanitizer.java), [`PPTXThreatSanitizer`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/sanitization/pptx/PPTXThreatSanitizer.java), [`XLSXThreatSanitizer`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/sanitization/xlsx/XLSXThreatSanitizer.java)) delegating to [`OOXMLThreatSanitizer`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/sanitization/common/OOXMLThreatSanitizer.java).
+
+### `sanitization.rtf`
+- [`RTFThreatSanitizer`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/sanitization/rtf/RTFThreatSanitizer.java): Surgically disarms embedded OLE objects (e.g. Equation Editor exploits), strips DDE/DDEAUTO fields, removes remote template references, and neutralizes dangerous hyperlink schemes.
 
 ### `sanitization.pdf`
 - [`PDFThreatSanitizer`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/sanitization/pdf/PDFThreatSanitizer.java): Operates directly on Apache PDFBox [`PDDocument`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/sanitization/pdf/PDFThreatSanitizer.java). Removes active JavaScript name trees, arbitrary `EmbeddedFiles` name trees, Document and Page `AA` (Additional Actions) dictionaries, catalog `OpenAction` dictionaries, active `XFA` forms, digital signature fields (preventing invalid post-CDR signatures), and active page annotations (`FileAttachment`, `RichMedia`, `3D`, `Movie`, `Sound`, `Screen`).

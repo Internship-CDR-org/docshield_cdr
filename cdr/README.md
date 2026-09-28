@@ -525,48 +525,52 @@ cdr/
     │   │   ├── pdf/               # PDFBox semantic parser
     │   │   └── rtf/               # RTF parser + dedicated CDR pipeline
     │   ├── threat/                # Threat analysis subsystem
-    │   │   ├── common/            # SecurityFinding, ThreatType (33 types), FindingClassification
+    │   │   ├── common/            # SecurityFinding, ThreatType, FindingClassification
     │   │   ├── ooxml/             # Shared OOXMLThreatAnalyzer & OLEAnalyzer
     │   │   ├── docx/, pptx/, xlsx/ # Modern format analyzers
     │   │   ├── legacy/, doc/, ppt/, xls/ # Legacy pre-conversion analyzers
-    │   │   └── pdf/               # Multi-pass PDFThreatAnalyzer, PDFSecuritySurfaceVerifier
+    │   │   ├── pdf/               # Multi-pass PDFThreatAnalyzer, PDFSecuritySurfaceVerifier
+    │   │   └── rtf/               # RTFThreatAnalyzer
     │   ├── sanitization/          # Disarming subsystem
     │   │   ├── common/            # OOXMLThreatSanitizer & RecursiveOOXMLSanitizer
     │   │   ├── docx/, pptx/, xlsx/ # Format sanitization entry points
-    │   │   └── pdf/               # PDFThreatSanitizer (PDFBox graph disarmer)
+    │   │   ├── pdf/               # PDFThreatSanitizer (PDFBox graph disarmer)
+    │   │   └── rtf/               # RTFThreatSanitizer
     │   ├── reconstruction/        # OOXMLPackageWriter (OPC serializer)
     │   ├── validation/            # Integrity validation
     │   │   ├── ooxml/             # OOXMLIntegrityValidator
-    │   │   └── pdf/               # PDFIntegrityValidator
+    │   │   ├── pdf/               # PDFIntegrityValidator
+    │   │   └── rtf/               # RTFIntegrityValidator
     │   ├── processing/            # Format pipeline orchestrators
     │   │   ├── common/            # CDRProcessor, CDRResult, CDRFileUtil, CDRConsoleReporter
     │   │   ├── docx/, pptx/, xlsx/ # Modern OOXML processors
     │   │   ├── doc/, ppt/, xls/   # Legacy conversion processors
-    │   │   └── pdf/               # Multi-pass PDF processor
+    │   │   ├── pdf/               # Multi-pass PDF processor
+    │   │   └── rtf/               # RTF CDR processor
     │   ├── reporting/             # ReportWriter audit log generator
     │   └── security/              # Security controls
     │       ├── QuarantineManager.java # Timestamped quarantine manager
     │       └── sandbox/           # SubprocessSandbox, PathSandbox, SecureXmlFactory
-    └── test/java/                 # Comprehensive test suite (57 test classes)
+    └── test/java/                 # Comprehensive test suite (59 test classes)
 ```
 
 ---
 
 ## 26. Testing & Quality Assurance
 
-The DocShield repository contains **57 dedicated test classes** verifying every stage of the CDR pipeline:
+The DocShield repository contains **59 dedicated test classes** verifying every stage of the CDR pipeline:
 
 | Test Group | Test Classes | Key Coverage Areas |
 |---|---|---|
-| **Common OOXML & Reconstruction** | `OOXMLPackageRoundTripTest`, `OOXMLPackagePPTXRoundTripTest`, `OOXMLPackageWriterPPTXTest`, `OOXMLPPTXRoundTripTest`, `PPTXReconstructionIntegrityTest` | ZIP reading, package serialization, relationship rebuilding, content-type preservation. |
+| **Common OOXML & Reconstruction** | `OOXMLPackageRoundTripTest`, `OOXMLPackagePPTXRoundTripTest`, `OOXMLPackageWriterPPTXTest`, `OOXMLPPTXRoundTripTest`, `PPTXReconstructionIntegrityTest`, `OOXMLPackageReaderEmbeddedOOXMLTest`, `OOXMLThreatSanitizerTest`, `RecursiveOOXMLSanitizerTest` | ZIP reading, package serialization, relationship rebuilding, content-type preservation. |
 | **DOCX Pipeline** | `DOCXSecuritySurfaceTest`, `DOCXThreatAnalyzerTest`, `DOCXThreatSanitizerTest`, `DOCXParserIRTest` | VBA macros, ActiveX, DDE/DDEAUTO fields, fragmented `w:instrText`, templates, `altChunk`. |
-| **PPTX Pipeline** | `PPTXThreatCoverageTest`, `PPTXSecuritySurfaceTest`, `PPTXThreatSanitizerTest`, `EmbeddedObjectAnalyzerTest`, `Ole10NativeAnalyzerTest`, `OLEAnalyzerTest`, `PayloadFingerprintTest`, `PayloadIdentifierTest`, `RelationshipAnalyzerTest`, `ResourceAnalyzerTest`, `SecurityPolicyTest`, `SVGAnalyzerTest` | Interactive `ppaction://` actions, embedded PE/ELF/Mach-O executables, active SVGs, OLE storages. |
+| **PPTX Pipeline** | `PPTXThreatCoverageTest`, `PPTXSecuritySurfaceTest`, `PPTXThreatSanitizerTest`, `EmbeddedObjectAnalyzerTest`, `Ole10NativeAnalyzerTest`, `OLEAnalyzerTest`, `PayloadFingerprintTest`, `PayloadIdentifierTest`, `RelationshipAnalyzerTest`, `ResourceAnalyzerTest`, `SecurityPolicyTest`, `SVGAnalyzerTest`, `OOXMLPackageReaderPPTXTest`, `PPTXContentInspectorTest`, `PPTXRelationshipGraphTest`, `PPTXXmlInspectorTest` | Interactive `ppaction://` actions, embedded PE/ELF/Mach-O executables, active SVGs, OLE storages. |
 | **XLSX Pipeline** | `XLSXThreatAnalyzerTest`, `XLSXThreatSanitizerTest`, `XLSXSecuritySurfaceTest`, `XLSXHardeningRegressionTest` | XLM macro sheets, DDE formula pipes, external workbook links, active calculation formulas. |
 | **Legacy Office Conversion** | `LegacyOfficeThreatAnalyzerTest`, `LegacyOfficeConverterTest`, `DOCToDOCXConverterTest` | Pre-conversion analysis, OLE stream inspection, sandboxed LibreOffice execution, cleanup. |
-| **RTF Pipeline** | `RTFThreatAnalyzerTest`, `RTFThreatSanitizerTest`, `RTFCDRProcessorTest`, `RTFIntegrityValidatorTest` | Embedded objects/OLE, Equation Editor indicators, DDE/DDEAUTO, external templates, dangerous URI schemes, reconstruction, SHA clean-copy behavior and post-CDR validation. |
+| **RTF Pipeline** | `RTFThreatAnalyzerTest`, `RTFThreatSanitizerTest`, `RTFCDRProcessorTest`, `RTFIntegrityValidatorTest`, `FileIdentifierRTFTest` | Embedded objects/OLE, Equation Editor indicators, DDE/DDEAUTO, external templates, dangerous URI schemes, reconstruction, SHA clean-copy behavior and post-CDR validation. |
 | **PDF Multi-Pass Pipeline** | `PDFCDRProcessorTest`, `PDFCleanCopySha256Test`, `PDFPass2SecurityTest`, `PDFSecurityPolicyTest`, `PDFSecuritySurfaceVerifierTest`, `PDFStreamThreatInspectorTest`, `PDFThreatSanitizerTest` | Pass 1-3 analysis, JS name trees, embedded attachments, stream decoding, post-CDR surface verification. |
 | **Sandbox & Quarantine** | `SubprocessSandboxTest`, `PathSandboxTest`, `SecureXmlFactoryTest`, `QuarantineManagerTest` | Process timeouts, output size bounds, Zip Slip rejection, XXE entity blocking, quarantine records. |
-| **Result & Error Handling** | `CDRFileUtilTest`, `CDRResultFinalFindingsTest`, `UserFacingErrorTest`, `TestHyperlinkComponent`, `TestTextComponent` | SHA-256 calculation, clean-copy verification, error message formatting. |
+| **Result, CLI & Error Handling** | `CDRFileUtilTest`, `CDRResultFinalFindingsTest`, `UserFacingErrorTest`, `TestHyperlinkComponent`, `TestTextComponent`, `MainCliIntegrationTest`, `FileIdentifierComprehensiveTest` | SHA-256 calculation, clean-copy verification, error message formatting, CLI entry-point behavior. |
 
 ---
 
@@ -652,7 +656,7 @@ mvn clean compile
 
 - **RTF Scope**: RTF CDR is integrated through `RTFCDRProcessor`; blocking findings are sanitized/reconstructed and then re-analyzed and integrity-validated. Inputs that cannot be safely released follow the normal quarantine/fail-closed path.
 - **Arbitrary OLE Rewriting**: Legacy OLE storages containing complex proprietary binary streams cannot always be rewritten at the binary stream level; DocShield secures these by disarming the container or converting them via sandboxed LibreOffice into modern OOXML.
-- **External Conversion Dependency**: Processing legacy binary formats (`DOC`, `PPT`, `XLS`) requires LibreOffice to be installed on the host or inside the container sandbox. Modern formats (`DOCX`, `PPTX`, `XLSX`, `PDF`) have zero external tool dependencies and run purely in Java.
+- **External Conversion Dependency**: Processing legacy binary formats (`DOC`, `PPT`, `XLS`) requires LibreOffice to be installed on the host or inside the container sandbox. Modern formats (`DOCX`, `PPTX`, `XLSX`, `PDF`, `RTF`) have zero external tool dependencies and run purely in Java.
 - **Platform Sandbox Isolation Differences**: Native execution on Windows without WSL2 or Docker relies on Java-level process supervision (`SubprocessSandbox`), which provides timeout, output buffer, and memory monitoring, but lacks Linux kernel-level namespace/mount isolation.
 
 ---
@@ -661,7 +665,7 @@ mvn clean compile
 
 | Validation Level | Scope & Methodology | Result |
 |---|---|---|
-| **Automated Unit & Integration Tests** | 57 test classes executed via JUnit 5 (`mvn test`), verifying parsers, analyzers, sanitizers, recursive CDR, integrity validators, and sandbox drivers. | **100% Passing** |
+| **Automated Unit & Integration Tests** | 59 test classes executed via JUnit 5 (`mvn test`), verifying parsers, analyzers, sanitizers, recursive CDR, integrity validators, and sandbox drivers. | **100% Passing** |
 | **Threat Surface Hardening Tests** | Specialized security regression suites (`DOCXSecuritySurfaceTest`, `PPTXSecuritySurfaceTest`, `XLSXSecuritySurfaceTest`, `PDFPass2SecurityTest`, `PDFSecuritySurfaceVerifierTest`) testing evasive payloads. | **Verified** |
 | **Sandbox Isolation Tests** | Unit tests in `security.sandbox` verifying process tree termination, output polling bounds, Zip Slip traversal rejection, and XML parser hardening. | **Verified** |
 | **Corpus & External Validation** | Manual testing against known weaponized malware samples, macro droppers, and EICAR test vectors. (External multi-engine scanner results are used for manual benchmark verification and are not part of automated build tests). | **Verified** |
@@ -672,5 +676,3 @@ mvn clean compile
 The repository includes a GitHub Actions build at .github/workflows/build.yml. Every push to main and every pull request targeting main runs the clean Java 21 Maven test suite. The CI job installs LibreOffice and Bubblewrap so the published build has the expected legacy-conversion and sandbox dependencies.
 
 The CI job also checks that automated tests do not depend on personal/manual files from cdr/samples/. Personal documents may still be kept locally for manual testing; they are not part of the automated regression contract.
-
-For the complete operator-facing failure catalog, see docs/ERROR_HANDLING.md.

@@ -521,7 +521,7 @@ cdr/
     │   │   ├── ooxml/             # Secure OOXMLPackageReader
     │   │   ├── legacy/            # Sandboxed LibreOffice conversion (LegacyOfficeConverter)
     │   │   ├── docx/, pptx/, xlsx/ # Semantic parsers
-    │   │   ├── doc/, ppt/, xls/   # Legacy POI parsers & format converters
+    │   │   ├── doc/, ppt/, xls/   # Legacy conversion adapters
     │   │   ├── pdf/               # PDFBox semantic parser
     │   │   └── rtf/               # RTF parser + dedicated CDR pipeline
     │   ├── threat/                # Threat analysis subsystem
@@ -547,14 +547,14 @@ cdr/
     │   └── security/              # Security controls
     │       ├── QuarantineManager.java # Timestamped quarantine manager
     │       └── sandbox/           # SubprocessSandbox, PathSandbox, SecureXmlFactory
-    └── test/java/                 # Comprehensive test suite (51 test classes)
+    └── test/java/                 # Comprehensive test suite (57 test classes)
 ```
 
 ---
 
 ## 26. Testing & Quality Assurance
 
-The DocShield repository contains **51 dedicated test classes** verifying every stage of the CDR pipeline:
+The DocShield repository contains **57 dedicated test classes** verifying every stage of the CDR pipeline:
 
 | Test Group | Test Classes | Key Coverage Areas |
 |---|---|---|
@@ -574,11 +574,11 @@ The DocShield repository contains **51 dedicated test classes** verifying every 
 
 ### Building & Running Tests
 ```bash
-# Build the project
-mvn clean compile
+# Clean build and run the complete JUnit suite
+mvn clean test
 
-# Run all 51 automated test suites
-mvn test
+# Compile only
+mvn clean compile
 ```
 
 ### Linux / WSL Bubblewrap Sandbox (`scripts/sandbox-run.sh`)
@@ -661,7 +661,16 @@ mvn test
 
 | Validation Level | Scope & Methodology | Result |
 |---|---|---|
-| **Automated Unit & Integration Tests** | 51 test suites executed via JUnit 5 (`mvn test`), verifying parsers, analyzers, sanitizers, recursive CDR, integrity validators, and sandbox drivers. | **100% Passing** |
+| **Automated Unit & Integration Tests** | 57 test classes executed via JUnit 5 (`mvn test`), verifying parsers, analyzers, sanitizers, recursive CDR, integrity validators, and sandbox drivers. | **100% Passing** |
 | **Threat Surface Hardening Tests** | Specialized security regression suites (`DOCXSecuritySurfaceTest`, `PPTXSecuritySurfaceTest`, `XLSXSecuritySurfaceTest`, `PDFPass2SecurityTest`, `PDFSecuritySurfaceVerifierTest`) testing evasive payloads. | **Verified** |
 | **Sanbox Isolation Tests** | Unit tests in `security.sandbox` verifying process tree termination, output polling bounds, Zip Slip traversal rejection, and XML parser hardening. | **Verified** |
 | **Corpus & External Validation** | Manual testing against known weaponized malware samples, macro droppers, and EICAR test vectors. (External multi-engine scanner results are used for manual benchmark verification and are not part of automated build tests). | **Verified** |
+
+
+## 31. Final Build & CI
+
+The repository includes a GitHub Actions build at .github/workflows/build.yml. Every push to main and every pull request targeting main runs the clean Java 21 Maven test suite. The CI job installs LibreOffice and Bubblewrap so the published build has the expected legacy-conversion and sandbox dependencies.
+
+The CI job also checks that automated tests do not depend on personal/manual files from cdr/samples/. Personal documents may still be kept locally for manual testing; they are not part of the automated regression contract.
+
+For the complete operator-facing failure catalog, see docs/ERROR_HANDLING.md.

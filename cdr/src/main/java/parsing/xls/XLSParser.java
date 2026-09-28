@@ -31,9 +31,7 @@ public class XLSParser implements DocumentParser {
             DocumentModel model = new XLSXParser().parse(convertedFile);
 
             parseResult.setParseSucceeded(true);
-            parseResult.setExtractionValid(true);
-            parseResult.setTextCount(model.getTextComponents().size());
-            parseResult.setImageCount(model.getImageComponents().size());
+            parseResult.setExtractionValid(true);            parseResult.setImageCount(model.getImageComponents().size());
             parseResult.setEmbeddedObjectCount(model.getEmbeddedObjectComponents().size());
             parseResult.setSheetCount(model.getStructureComponents().size());
             parseResult.setCellCount(model.getTextComponents().size());

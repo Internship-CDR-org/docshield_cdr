@@ -1,7 +1,7 @@
 # DocShield CDR (Content Disarm and Reconstruction)
 
 [![Java 21](https://img.shields.io/badge/Java-21-blue.svg)](https://openjdk.org/projects/jdk/21/)
-[![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)]()
+[![Build](https://github.com/Pardhu-26/docshield_cdr/actions/workflows/build.yml/badge.svg)](https://github.com/Pardhu-26/docshield_cdr/actions/workflows/build.yml)
 [![License](https://img.shields.io/badge/License-Proprietary-red.svg)]()
 
 DocShield is a high-assurance **Content Disarm and Reconstruction (CDR)** engine engineered to protect enterprise boundaries from file-borne malware, weaponized document exploits, malicious macros, script execution chains, external data exfiltration pipes, and archive-layer evasion techniques.
@@ -663,7 +663,7 @@ mvn clean compile
 |---|---|---|
 | **Automated Unit & Integration Tests** | 57 test classes executed via JUnit 5 (`mvn test`), verifying parsers, analyzers, sanitizers, recursive CDR, integrity validators, and sandbox drivers. | **100% Passing** |
 | **Threat Surface Hardening Tests** | Specialized security regression suites (`DOCXSecuritySurfaceTest`, `PPTXSecuritySurfaceTest`, `XLSXSecuritySurfaceTest`, `PDFPass2SecurityTest`, `PDFSecuritySurfaceVerifierTest`) testing evasive payloads. | **Verified** |
-| **Sanbox Isolation Tests** | Unit tests in `security.sandbox` verifying process tree termination, output polling bounds, Zip Slip traversal rejection, and XML parser hardening. | **Verified** |
+| **Sandbox Isolation Tests** | Unit tests in `security.sandbox` verifying process tree termination, output polling bounds, Zip Slip traversal rejection, and XML parser hardening. | **Verified** |
 | **Corpus & External Validation** | Manual testing against known weaponized malware samples, macro droppers, and EICAR test vectors. (External multi-engine scanner results are used for manual benchmark verification and are not part of automated build tests). | **Verified** |
 
 

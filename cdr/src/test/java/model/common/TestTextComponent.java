@@ -1,25 +1,29 @@
 package model.common;
 
-public class TestTextComponent {
+import org.junit.jupiter.api.Test;
 
-    public static void main(String[] args) {
+import static org.junit.jupiter.api.Assertions.*;
 
+class TestTextComponent {
+
+    @Test
+    void testGettersAndSetters() {
         TextComponent text = new TextComponent();
 
         text.setId("text_001");
-        text.setText("Hello Pardhu");
+        text.setText("Sample text for test");
         text.setFontName("Arial");
         text.setFontSize(14);
         text.setBold(true);
         text.setItalic(false);
         text.setAlignment("CENTER");
 
-        System.out.println("ID        : " + text.getId());
-        System.out.println("Text      : " + text.getText());
-        System.out.println("Font      : " + text.getFontName());
-        System.out.println("Size      : " + text.getFontSize());
-        System.out.println("Bold      : " + text.isBold());
-        System.out.println("Italic    : " + text.isItalic());
-        System.out.println("Alignment : " + text.getAlignment());
+        assertEquals("text_001", text.getId());
+        assertEquals("Sample text for test", text.getText());
+        assertEquals("Arial", text.getFontName());
+        assertEquals(14, text.getFontSize());
+        assertTrue(text.isBold());
+        assertFalse(text.isItalic());
+        assertEquals("CENTER", text.getAlignment());
     }
 }

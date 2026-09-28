@@ -1,40 +1,43 @@
-name: DocShield Build
+name: DocShield CDR CI
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
 
 permissions:
   contents: read
 
 jobs:
-  test:
-    name: Java 21 + Maven test suite
+  build-and-test:
+    name: Build & Security Verification
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Java 21
+      - name: Set up Java 21 (Eclipse Temurin)
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
           cache: maven
 
-      - name: Install runtime dependencies
+      - name: Install Runtime Dependencies (LibreOffice & Bubblewrap)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libreoffice bubblewrap
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends libreoffice bubblewrap
 
-      - name: Run clean test suite
-        working-directory: cdr
-        run: mvn --batch-mode --no-transfer-progress clean test
+      - name: Verify Environment & Tools
+        run: |
+          java -version
+          mvn -version
+          libreoffice --version || true
+          bwrap --version || true
 
-      - name: Verify no personal/manual samples are required by tests
+      - name: Verify No Personal Sample Dependencies in Automated Tests
         working-directory: cdr
         shell: bash
         run: |
@@ -42,3 +45,12 @@ jobs:
             echo "ERROR: Automated tests reference personal/manual sample files."
             exit 1
           fi
+          echo "Automated test dependency audit: PASS"
+
+      - name: Run Maven Clean Test
+        working-directory: cdr
+        run: mvn --batch-mode --no-transfer-progress clean test
+
+      - name: Package JAR
+        working-directory: cdr
+        run: mvn --batch-mode --no-transfer-progress package -DskipTests

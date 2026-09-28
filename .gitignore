@@ -1,22 +1,31 @@
-# Generated output
+# Maven build target & compiler outputs
+target/
+build/
+out/
+
+# Docshield final verification docs
+/docs/
+
+# DocShield runtime output directories
 output/
 
 # Test samples / threat corpus
 samples/
 
-# Documentation
-docs/
-
-# Build/generated files
-target/
-build/
-out/
-
-# IDE
+# IDE files
 .idea/
-.vscode/
 *.iml
+.vscode/
+.settings/
+.project
+.classpath
 
-# OS
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+*~
+
+# OS generated files
 .DS_Store
 Thumbs.db

@@ -1,35 +1,34 @@
 package model.common;
 
-public class TestHyperlinkComponent {
+import org.junit.jupiter.api.Test;
 
-    public static void main(String[] args) {
+import static org.junit.jupiter.api.Assertions.*;
 
-        // Hyperlink with visible text
-        HyperlinkComponent link1 =
-                new HyperlinkComponent(
-                        "link_001",
-                        "GitHub",
-                        "https://github.com"
-                );
+class TestHyperlinkComponent {
 
-        // Hyperlink without visible display text
-        HyperlinkComponent link2 =
-                new HyperlinkComponent(
-                        "link_002",
-                        null,
-                        "https://example.com"
-                );
+    @Test
+    void testHyperlinkWithDisplayText() {
+        HyperlinkComponent link = new HyperlinkComponent(
+                "link_001",
+                "Example Site",
+                "https://example.com"
+        );
 
-        System.out.println("========== LINK 1 ==========");
-        System.out.println("ID          : " + link1.getId());
-        System.out.println("Display     : " + link1.getDisplayText());
-        System.out.println("Target      : " + link1.getTarget());
+        assertEquals("link_001", link.getId());
+        assertEquals("Example Site", link.getDisplayText());
+        assertEquals("https://example.com", link.getTarget());
+    }
 
-        System.out.println();
+    @Test
+    void testHyperlinkWithoutDisplayText() {
+        HyperlinkComponent link = new HyperlinkComponent(
+                "link_002",
+                null,
+                "https://example.com"
+        );
 
-        System.out.println("========== LINK 2 ==========");
-        System.out.println("ID          : " + link2.getId());
-        System.out.println("Display     : " + link2.getDisplayText());
-        System.out.println("Target      : " + link2.getTarget());
+        assertEquals("link_002", link.getId());
+        assertNull(link.getDisplayText());
+        assertEquals("https://example.com", link.getTarget());
     }
 }

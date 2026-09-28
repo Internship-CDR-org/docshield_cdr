@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -14,6 +15,10 @@ class SubprocessSandboxTest {
 
     @TempDir
     Path temp;
+
+    private static boolean isWindows() {
+        return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
+    }
 
     @Test
     void verifiesBwrapAvailabilityAndCommandWrapping() {
@@ -33,9 +38,15 @@ class SubprocessSandboxTest {
 
     @Test
     void executesSimpleSubprocessSuccessfully() throws Exception {
-        Path script = temp.resolve("test-echo.sh");
-        Files.writeString(script, "#!/usr/bin/env bash\necho 'sandbox-success'\n");
-        assertTrue(script.toFile().setExecutable(true));
+        Path script;
+        if (isWindows()) {
+            script = temp.resolve("test-echo.cmd");
+            Files.writeString(script, "@echo off\r\necho sandbox-success\r\nexit /b 0\r\n");
+        } else {
+            script = temp.resolve("test-echo.sh");
+            Files.writeString(script, "#!/usr/bin/env bash\necho 'sandbox-success'\n");
+            assertTrue(script.toFile().setExecutable(true));
+        }
 
         SubprocessSandbox.SubprocessResult result = SubprocessSandbox.execute(
                 List.of(script.toAbsolutePath().toString()),
@@ -54,9 +65,15 @@ class SubprocessSandboxTest {
 
     @Test
     void terminatesWhenProcessTimesOut() throws Exception {
-        Path script = temp.resolve("test-sleep.sh");
-        Files.writeString(script, "#!/usr/bin/env bash\nsleep 10\n");
-        assertTrue(script.toFile().setExecutable(true));
+        Path script;
+        if (isWindows()) {
+            script = temp.resolve("test-sleep.cmd");
+            Files.writeString(script, "@echo off\r\nping 127.0.0.1 -n 11 > nul\r\nexit /b 0\r\n");
+        } else {
+            script = temp.resolve("test-sleep.sh");
+            Files.writeString(script, "#!/usr/bin/env bash\nsleep 10\n");
+            assertTrue(script.toFile().setExecutable(true));
+        }
 
         IOException error = assertThrows(IOException.class, () ->
                 SubprocessSandbox.execute(

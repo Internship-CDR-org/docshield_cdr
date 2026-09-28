@@ -241,7 +241,7 @@ public class FileIdentifier {
     }
 
     private Format detectFormat(Path file) throws IOException {
-        byte[] header = Files.readAllBytes(file);
+        byte[] header = readHeader(file, 4096);
         if (isPdf(header)) {
             return Format.PDF;
         }
@@ -265,6 +265,12 @@ public class FileIdentifier {
             return detectOOXML(file);
         }
         return Format.UNKNOWN;
+    }
+
+    private byte[] readHeader(Path file, int maxBytes) throws IOException {
+        try (InputStream in = Files.newInputStream(file)) {
+            return in.readNBytes(maxBytes);
+        }
     }
 
     private boolean isZip(byte[] header) {

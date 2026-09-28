@@ -42,18 +42,35 @@ public final class SubprocessSandbox {
         if ("true".equalsIgnoreCase(disableBwrap)) {
             return false;
         }
+
+        /*
+         * Presence of the bwrap executable is not sufficient. Some CI runners,
+         * containers, kernels, or user-namespace policies allow "bwrap --version"
+         * but reject the namespace/mount operations required by the real sandbox.
+         * Probe the same class of isolation used by buildSandboxedCommand before
+         * declaring Bubblewrap available.
+         */
         try {
-            Process process = new ProcessBuilder("bwrap", "--version")
+            Process process = new ProcessBuilder(
+                    "bwrap",
+                    "--unshare-all",
+                    "--die-with-parent",
+                    "--new-session",
+                    "--ro-bind", "/", "/",
+                    "--proc", "/proc",
+                    "--dev", "/dev",
+                    "--tmpfs", "/tmp",
+                    "--", "/bin/true")
                     .redirectErrorStream(true)
                     .start();
-            boolean finished = process.waitFor(2, TimeUnit.SECONDS);
-            if (finished && process.exitValue() == 0) {
-                return true;
-            }
+
+            boolean finished = process.waitFor(3, TimeUnit.SECONDS);
             if (!finished) {
                 process.destroyForcibly();
+                process.waitFor(1, TimeUnit.SECONDS);
+                return false;
             }
-            return false;
+            return process.exitValue() == 0;
         } catch (Exception e) {
             return false;
         }

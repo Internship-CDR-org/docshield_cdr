@@ -48,10 +48,6 @@ public final class XLSXThreatAnalyzer {
     private static final Pattern XLM_ACTIVE = Pattern.compile(
             "(?is)<(?:[^:>]+:)?(?:f|formula|macro)\\b[^>]*>(?:[^<]*\\b(?:EXEC|CALL|RUN|REGISTER|GET\\.DOCUMENT|WEBSERVICE)\\b|[^<]*\\b(?:DDE|DDEAUTO)\\b)"
     );
-    private static final Pattern EXTERNAL_URL = Pattern.compile(
-            "(?i)\\b(?:https?|ftp|file|ms-|javascript|vbscript|data):"
-    );
-
     private final OOXMLThreatAnalyzer common = new OOXMLThreatAnalyzer();
 
     public List<SecurityFinding> analyze(OOXMLPackage packageData) {

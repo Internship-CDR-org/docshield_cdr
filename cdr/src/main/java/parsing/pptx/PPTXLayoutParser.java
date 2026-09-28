@@ -22,9 +22,6 @@ import java.util.zip.ZipFile;
 
 public class PPTXLayoutParser {
 
-    private static final String RELATIONSHIP_NAMESPACE =
-            "http://schemas.openxmlformats.org/package/2006/relationships";
-
     private static final String OFFICE_RELATIONSHIP_NAMESPACE =
             "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 

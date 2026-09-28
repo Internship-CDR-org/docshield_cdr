@@ -56,11 +56,6 @@ public final class OOXMLThreatSanitizer implements Sanitizer<OOXMLPackage> {
             "(?is)(?:^|[\"\'])(?:cmd(?:\\.exe)?|powershell(?:\\.exe)?|pwsh(?:\\.exe)?|wscript(?:\\.exe)?|cscript(?:\\.exe)?|mshta(?:\\.exe)?|rundll32(?:\\.exe)?)[^!\r\n]{0,8192}\\![A-Za-z]{1,3}\\$?\\d+"
     );
 
-    private static final Pattern WORD_EXTERNAL_FIELD = Pattern.compile(
-            "(?is)<(?:[A-Za-z_][\\w.-]*:)?fldSimple\\b[^>]*\\b(?:INCLUDE|INCLUDETEXT|INCLUDEPICTURE|LINK|IMPORT)\\b[^>]*>.*?</(?:[A-Za-z_][\\w.-]*:)?fldSimple\\s*>|" +
-            "<(?:[A-Za-z_][\\w.-]*:)?instrText\\b[^>]*>.*?\\b(?:INCLUDE|INCLUDETEXT|INCLUDEPICTURE|LINK|IMPORT)\\b.*?</(?:[A-Za-z_][\\w.-]*:)?instrText\\s*>"
-    );
-
     @Override
     public List<String> sanitize(OOXMLPackage packageData, List<SecurityFinding> findings) {
         List<String> actions = new ArrayList<>();

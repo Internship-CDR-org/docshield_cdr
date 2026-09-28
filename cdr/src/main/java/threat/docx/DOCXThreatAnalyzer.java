@@ -24,10 +24,6 @@ import java.util.regex.Matcher;
 public final class DOCXThreatAnalyzer {
     private final OOXMLThreatAnalyzer commonAnalyzer = new OOXMLThreatAnalyzer();
 
-    private static final Pattern DDE_FIELD = Pattern.compile(
-            "(?is)<(?:w:)?fldSimple\\b[^>]*\\b(?:instr|instrText)\\s*=\\s*[\\\"'][^\\\"']*\\bDDE(?:AUTO)?\\b[^\\\"']*[\\\"'][^>]*>.*?</(?:w:)?fldSimple\\s*>|" +
-            "<(?:w:)?instrText\\b[^>]*>.*?\\bDDE(?:AUTO)?\\b.*?</(?:w:)?instrText\\s*>"
-    );
     private static final Pattern DDE_TOKEN = Pattern.compile("(?i)\\bDDE(?:AUTO)?\\b");
     private static final Pattern INSTR_TEXT = Pattern.compile("(?is)<(?:w:)?instrText\\b[^>]*>(.*?)</(?:w:)?instrText\\s*>");
     private static final Pattern EXTERNAL_FIELD = Pattern.compile(

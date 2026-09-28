@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -106,55 +105,6 @@ public class FileIdentifier {
         }
     }
 
-    private boolean hasZipSignature(Path file) throws IOException {
-        try (InputStream inputStream = Files.newInputStream(file)) {
-            int firstByte = inputStream.read();
-            int secondByte = inputStream.read();
-            int thirdByte = inputStream.read();
-            int fourthByte = inputStream.read();
-            return firstByte == 0x50 && secondByte == 0x4B && thirdByte == 0x03 && fourthByte == 0x04;
-        }
-    }
-
-    private boolean hasDocxStructure(Path file) {
-        try (ZipFile zipFile = new ZipFile(file.toFile())) {
-            boolean contentTypes = false;
-            boolean documentXml = false;
-            var entries = zipFile.entries();
-            while (entries.hasMoreElements()) {
-                ZipEntry entry = entries.nextElement();
-                String name = entry.getName();
-                if (name.equals("[Content_Types].xml")) {
-                    contentTypes = true;
-                }
-                if (name.equals("word/document.xml")) {
-                    documentXml = true;
-                }
-            }
-            return contentTypes && documentXml;
-        } catch (IOException e) {
-            return false;
-        }
-    }
-
-    private boolean hasWordprocessingContentType(Path file) {
-        try (ZipFile zipFile = new ZipFile(file.toFile())) {
-            ZipEntry entry = zipFile.getEntry("[Content_Types].xml");
-            if (entry == null) {
-                return false;
-            }
-            try (InputStream inputStream = zipFile.getInputStream(entry)) {
-                String content = new String(
-                        inputStream.readAllBytes()
-                );
-                return content.contains(
-                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"
-                );
-            }
-        } catch (IOException e) {
-            return false;
-        }
-    }
 
     private String calculateSha256(Path file) throws IOException {
         try {

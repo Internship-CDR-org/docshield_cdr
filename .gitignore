@@ -5,11 +5,6 @@ out/
 **/target/
 **/build/
 **/out/
-
-#DocShield final check docs
-docs/
-**/docs/
-
 # DocShield runtime output directories
 output/
 **/output/

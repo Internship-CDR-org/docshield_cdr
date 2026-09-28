@@ -38,9 +38,9 @@ Legacy .xls Input
 
 ## 2. Core Implementation: `XLSCDRProcessor`
 
-- [`XLSCDRProcessor`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/processing/xls/XLSCDRProcessor.java) implements [`CDRProcessor`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/processing/common/CDRProcessor.java).
-- Executes pre-conversion threat analysis via [`XLSThreatAnalyzer`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/xls/XLSThreatAnalyzer.java).
-- Converts binary XLS to XLSX via [`XLSToXLSXConverter.convert`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/parsing/xls/XLSToXLSXConverter.java) and [`LegacyOfficeConverter`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/parsing/legacy/LegacyOfficeConverter.java).
-- Passes the converted XLSX into [`XLSXCDRProcessor.process(converted, output, false)`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/processing/xlsx/XLSXCDRProcessor.java).
+- [`XLSCDRProcessor`](XLSCDRProcessor.java) implements [`CDRProcessor`](..\common\CDRProcessor.java).
+- Executes pre-conversion threat analysis via [`XLSThreatAnalyzer`](..\..\threat\xls\XLSThreatAnalyzer.java).
+- Converts binary XLS to XLSX via [`XLSToXLSXConverter.convert`](..\..\parsing\xls\XLSToXLSXConverter.java) and [`LegacyOfficeConverter`](..\..\parsing\legacy\LegacyOfficeConverter.java).
+- Passes the converted XLSX into [`XLSXCDRProcessor.process(converted, output, false)`](..\xlsx\XLSXCDRProcessor.java).
 - Cleans up temporary conversion directories in a `finally` block.
 - Produces a fully disarmed modern `.xlsx` spreadsheet.

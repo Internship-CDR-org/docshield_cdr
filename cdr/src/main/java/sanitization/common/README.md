@@ -6,11 +6,11 @@ The `sanitization.common` package implements the core mutation and disarming log
 
 ## 1. Architectural Role
 
-OPC documents are ZIP packages containing XML parts, binary media, and relationship graphs (`.rels`). Rather than reinventing format-specific parsers and sanitizers for every XML element, DocShield uses [`OOXMLThreatSanitizer`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/sanitization/common/OOXMLThreatSanitizer.java) as a unified mutation boundary.
+OPC documents are ZIP packages containing XML parts, binary media, and relationship graphs (`.rels`). Rather than reinventing format-specific parsers and sanitizers for every XML element, DocShield uses [`OOXMLThreatSanitizer`](OOXMLThreatSanitizer.java) as a unified mutation boundary.
 
 When an analyzer identifies a threat:
 1. The threat finding specifies the affected part, relationship ID, or XML construct.
-2. The sanitizer executes surgical removals and XML modifications on the in-memory [`OOXMLPackage`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/model/ooxml/OOXMLPackage.java).
+2. The sanitizer executes surgical removals and XML modifications on the in-memory [`OOXMLPackage`](..\..\model\ooxml\OOXMLPackage.java).
 3. The package graph is cleaned up to prevent orphaned content types, broken relationship IDs, or dangling XML references.
 
 ---
@@ -32,7 +32,7 @@ The primary mutation engine implementing `Sanitizer<OOXMLPackage>`. Key capabili
   - Finds and removes all incoming relationships targeting the unsafe part across the entire package.
   - Cleans up XML elements referencing those incoming relationship IDs.
   - Removes all outgoing relationships defined by the unsafe part.
-  - Removes the physical [`OOXMLPart`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/model/ooxml/OOXMLPart.java) data.
+  - Removes the physical [`OOXMLPart`](..\..\model\ooxml\OOXMLPart.java) data.
   - Strips the part's `<Override>` declaration from `[Content_Types].xml`.
 
 #### B. XML-Level Sanitization
@@ -58,9 +58,9 @@ Embedded packages (e.g., an Excel sheet embedded inside a Word document under `w
 ### Workflow
 1. Scans all candidate embedded parts (`/embeddings/`, `/media/`, `.bin`, `.docx`, `.xlsx`, `.pptx`).
 2. Identifies if the embedded payload is a ZIP/OOXML package or an OLE storage containing nested OOXML streams.
-3. Unpacks the nested package in-memory using [`OOXMLPackageReader`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/parsing/ooxml/OOXMLPackageReader.java).
-4. Runs full threat analysis ([`OOXMLThreatAnalyzer`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/ooxml/OOXMLThreatAnalyzer.java) + format analyzer) and sanitizes via [`OOXMLThreatSanitizer`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/sanitization/common/OOXMLThreatSanitizer.java).
-5. Reconstructs the nested package in memory via [`OOXMLPackageWriter.writeToBytes`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/reconstruction/OOXMLPackageWriter.java).
+3. Unpacks the nested package in-memory using [`OOXMLPackageReader`](..\..\parsing\ooxml\OOXMLPackageReader.java).
+4. Runs full threat analysis ([`OOXMLThreatAnalyzer`](..\..\threat\ooxml\OOXMLThreatAnalyzer.java) + format analyzer) and sanitizes via [`OOXMLThreatSanitizer`](OOXMLThreatSanitizer.java).
+5. Reconstructs the nested package in memory via [`OOXMLPackageWriter.writeToBytes`](..\..\reconstruction\OOXMLPackageWriter.java).
 6. If clean, updates the containing part's byte array with the reconstructed data.
 7. If the nested package cannot be safely parsed, exceeds limits, or retains blocking threats after sanitization, the containing embedded part is removed completely from the parent package.
 

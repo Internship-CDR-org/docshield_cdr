@@ -2,15 +2,21 @@
 target/
 build/
 out/
+**/target/
+**/build/
+**/out/
 
-# Docshield final verification docs
+#DocShield final check docs
+docs/
 **/docs/
 
 # DocShield runtime output directories
 output/
+**/output/
 
-# Test samples / threat corpus
+# Test samples / threat corpus (local manual testing only; untracked from Git)
 samples/
+**/samples/
 
 # IDE files
 .idea/

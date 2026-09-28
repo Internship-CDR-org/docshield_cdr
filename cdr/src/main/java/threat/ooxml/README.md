@@ -10,7 +10,7 @@ Because Microsoft Word, PowerPoint, and Excel share the same underlying ZIP pack
 
 ## Key Classes & Capabilities
 
-### 1. [`OOXMLThreatAnalyzer`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/ooxml/OOXMLThreatAnalyzer.java)
+### 1. [`OOXMLThreatAnalyzer`](OOXMLThreatAnalyzer.java)
 - **Path**: `src/main/java/threat/ooxml/OOXMLThreatAnalyzer.java`
 - **Responsibilities**:
   - **VBA Project Detection**: Detects `vbaProject.bin`, `vbaProjectSignature.bin`, and `vbaData.xml` part names and relationships.
@@ -30,7 +30,7 @@ Because Microsoft Word, PowerPoint, and Excel share the same underlying ZIP pack
 
 ---
 
-### 2. [`OLEAnalyzer`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/ooxml/OLEAnalyzer.java)
+### 2. [`OLEAnalyzer`](OLEAnalyzer.java)
 - **Path**: `src/main/java/threat/ooxml/OLEAnalyzer.java`
 - **Responsibilities**:
   - Validates OLE2 Compound Document magic signature (`\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1`).

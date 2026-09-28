@@ -8,7 +8,7 @@ The `validation.ooxml` package provides post-reconstruction structural and relat
 
 When DocShield disarms a package by stripping active XML tags, deleting threat-bearing binary parts (macros, OLE objects, controls), and removing relationships, the resulting document must remain compliant with the Open Packaging Conventions (OPC) specification. 
 
-[`OOXMLIntegrityValidator`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/validation/ooxml/OOXMLIntegrityValidator.java) performs comprehensive graph validation on the re-read output package to verify that no broken pointers or malformed structures were introduced during sanitization and serialization.
+[`OOXMLIntegrityValidator`](OOXMLIntegrityValidator.java) performs comprehensive graph validation on the re-read output package to verify that no broken pointers or malformed structures were introduced during sanitization and serialization.
 
 ---
 
@@ -36,4 +36,4 @@ When DocShield disarms a package by stripping active XML tags, deleting threat-b
 
 ## 3. Integration in Processors
 
-Called by [`DOCXCDRProcessor`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/processing/docx/DOCXCDRProcessor.java), [`PPTXCDRProcessor`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/processing/pptx/PPTXCDRProcessor.java), and [`XLSXCDRProcessor`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/processing/xlsx/XLSXCDRProcessor.java) during the post-reconstruction verification loop. If `validate()` returns `false`, `integrityPassed` is set to `false`, causing `Main.java` to safely delete the output file and quarantine the input.
+Called by [`DOCXCDRProcessor`](..\..\processing\docx\DOCXCDRProcessor.java), [`PPTXCDRProcessor`](..\..\processing\pptx\PPTXCDRProcessor.java), and [`XLSXCDRProcessor`](..\..\processing\xlsx\XLSXCDRProcessor.java) during the post-reconstruction verification loop. If `validate()` returns `false`, `integrityPassed` is set to `false`, causing `Main.java` to safely delete the output file and quarantine the input.

@@ -10,11 +10,11 @@ Microsoft Word documents can carry active capabilities inside document XML field
 
 ## Key Classes & Architecture
 
-### [`DOCXThreatAnalyzer`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/docx/DOCXThreatAnalyzer.java)
+### [`DOCXThreatAnalyzer`](DOCXThreatAnalyzer.java)
 - **Path**: `src/main/java/threat/docx/DOCXThreatAnalyzer.java`
 - **Delegation Flow**:
-  1. Executes [`OOXMLThreatAnalyzer`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/ooxml/OOXMLThreatAnalyzer.java) for common package-level threats (VBA, ActiveX, dangerous URIs, malicious XML, dangling relationships).
-  2. Executes [`OLEAnalyzer`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/ooxml/OLEAnalyzer.java) for embedded OLE Compound Document payloads.
+  1. Executes [`OOXMLThreatAnalyzer`](..\ooxml\OOXMLThreatAnalyzer.java) for common package-level threats (VBA, ActiveX, dangerous URIs, malicious XML, dangling relationships).
+  2. Executes [`OLEAnalyzer`](..\ooxml\OLEAnalyzer.java) for embedded OLE Compound Document payloads.
   3. Inspects Word-specific XML parts (`word/document.xml`, `word/settings.xml`, `word/header*.xml`, `word/footer*.xml`, etc.).
   4. Inspects Word-specific package relationships.
 

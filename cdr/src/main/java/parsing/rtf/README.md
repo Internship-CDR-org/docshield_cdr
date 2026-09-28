@@ -11,8 +11,8 @@ The `parsing.rtf` package contains a custom lexical parser for Rich Text Format 
 
 | File | Responsibility |
 |---|---|
-| [`RTFParser.java`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/parsing/rtf/RTFParser.java) | Main entry point coordinating group-aware lexing and extraction into `DocumentModel`. |
-| [`RTFContentParser.java`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/parsing/rtf/RTFContentParser.java) | Group-aware lexical scanner tracking brace depth (`{`, `}`), hex escapes (`\'hh`), and skipping non-content destination groups (`\fonttbl`, `\colortbl`, `\stylesheet`, `\info`). |
-| [`RTFResourceParser.java`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/parsing/rtf/RTFResourceParser.java) | Scans for embedded hex-encoded images (`\pict`) and embedded OLE objects (`\object`). |
-| [`RTFHyperlinkExtractor.java`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/parsing/rtf/RTFHyperlinkExtractor.java) | Extracts URLs from RTF field structures (`{\field{\*\fldinst HYPERLINK ...}}`). |
-| [`RTFMetadataParser.java`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/parsing/rtf/RTFMetadataParser.java) | Extracts properties from the RTF `\info` group (title, author, creation date). |
+| [`RTFParser.java`](RTFParser.java) | Main entry point coordinating group-aware lexing and extraction into `DocumentModel`. |
+| [`RTFContentParser.java`](RTFContentParser.java) | Group-aware lexical scanner tracking brace depth (`{`, `}`), hex escapes (`\'hh`), and skipping non-content destination groups (`\fonttbl`, `\colortbl`, `\stylesheet`, `\info`). |
+| [`RTFResourceParser.java`](RTFResourceParser.java) | Scans for embedded hex-encoded images (`\pict`) and embedded OLE objects (`\object`). |
+| [`RTFHyperlinkExtractor.java`](RTFHyperlinkExtractor.java) | Extracts URLs from RTF field structures (`{\field{\*\fldinst HYPERLINK ...}}`). |
+| [`RTFMetadataParser.java`](RTFMetadataParser.java) | Extracts properties from the RTF `\info` group (title, author, creation date). |

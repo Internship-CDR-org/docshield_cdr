@@ -8,7 +8,7 @@ The `threat.common` package defines the universal data models, classification ta
 
 ## Core Enumerations & Data Structures
 
-### 1. [`FindingClassification`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/common/FindingClassification.java)
+### 1. [`FindingClassification`](FindingClassification.java)
 Defines the semantic meaning of an inspection finding:
 - **`OBSERVATION`**: Informational finding that is not inherently malicious (e.g., standard HTTP/HTTPS hyperlinks, presence of embedded images, benign OLE storage). **Non-blocking** for release.
 - **`POLICY_VIOLATION`**: Content that violates explicit organizational CDR security policies (e.g., external workbook links, external non-hyperlink resource references, automatic field updating). **Blocks release** until disarmed.
@@ -17,12 +17,12 @@ Defines the semantic meaning of an inspection finding:
 
 ---
 
-### 2. [`ThreatSeverity`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/common/ThreatSeverity.java)
+### 2. [`ThreatSeverity`](ThreatSeverity.java)
 Represents risk level: `INFO`, `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`.
 
 ---
 
-### 3. [`ThreatType`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/common/ThreatType.java)
+### 3. [`ThreatType`](ThreatType.java)
 Capability-based threat classifications:
 - **Active Code & Controls**: `VBA_PROJECT`, `ACTIVEX_OBJECT`, `XLM_MACRO`, `DDE`, `SCRIPT_CONTENT`, `DANGEROUS_ACTION`, `ACTIVE_FORMULA`.
 - **Payloads & Embedded Storage**: `EXECUTABLE_PAYLOAD`, `EMBEDDED_OBJECT`, `EMBEDDED_PACKAGE`, `EMBEDDED_ACTIVE_CONTENT`, `OLE_OBJECT`, `BINARY_RESOURCE`.
@@ -33,7 +33,7 @@ Capability-based threat classifications:
 
 ---
 
-### 4. [`SecurityFinding`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/common/SecurityFinding.java)
+### 4. [`SecurityFinding`](SecurityFinding.java)
 An immutable observation record containing:
 - `classification`: `FindingClassification`
 - `type`: `ThreatType`
@@ -48,5 +48,5 @@ An immutable observation record containing:
 ---
 
 ### 5. Interfaces
-- [`SecurityAnalyzer<T>`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/common/SecurityAnalyzer.java): Universal inspection contract `List<SecurityFinding> analyze(T data)`.
-- [`ThreatAnalyzer<T>`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/common/ThreatAnalyzer.java): Marker interface for threat analyzers.
+- [`SecurityAnalyzer<T>`](SecurityAnalyzer.java): Universal inspection contract `List<SecurityFinding> analyze(T data)`.
+- [`ThreatAnalyzer<T>`](ThreatAnalyzer.java): Marker interface for threat analyzers.

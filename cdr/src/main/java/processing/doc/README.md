@@ -38,9 +38,9 @@ Legacy .doc Input
 
 ## 2. Core Implementation: `DOCCDRProcessor`
 
-- [`DOCCDRProcessor`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/processing/doc/DOCCDRProcessor.java) implements [`CDRProcessor`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/processing/common/CDRProcessor.java).
-- Analyzes the input `.doc` file using [`DOCThreatAnalyzer`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/doc/DOCThreatAnalyzer.java) to record original threats.
-- Invokes [`DOCToDOCXConverter.convert`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/parsing/doc/DOCToDOCXConverter.java) (backed by [`LegacyOfficeConverter`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/parsing/legacy/LegacyOfficeConverter.java)) to convert `.doc` to `.docx` in an isolated sandbox workspace.
-- Pipes the converted `.docx` into [`DOCXCDRProcessor.process(converted, output, false)`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/processing/docx/DOCXCDRProcessor.java).
+- [`DOCCDRProcessor`](DOCCDRProcessor.java) implements [`CDRProcessor`](..\common\CDRProcessor.java).
+- Analyzes the input `.doc` file using [`DOCThreatAnalyzer`](..\..\threat\doc\DOCThreatAnalyzer.java) to record original threats.
+- Invokes [`DOCToDOCXConverter.convert`](..\..\parsing\doc\DOCToDOCXConverter.java) (backed by [`LegacyOfficeConverter`](..\..\parsing\legacy\LegacyOfficeConverter.java)) to convert `.doc` to `.docx` in an isolated sandbox workspace.
+- Pipes the converted `.docx` into [`DOCXCDRProcessor.process(converted, output, false)`](..\docx\DOCXCDRProcessor.java).
 - Ensures that temporary workspace files are cleanly deleted in a `finally` block via `deleteConvertedWorkspace`.
 - Output SHA-256 naturally differs from input SHA-256 because a new, modernized, sanitized `.docx` package is produced.

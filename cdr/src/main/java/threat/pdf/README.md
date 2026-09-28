@@ -26,7 +26,7 @@ flowchart TD
 
 ## Core Classes & Responsibilities
 
-### 1. [`PDFThreatAnalyzer`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/pdf/PDFThreatAnalyzer.java)
+### 1. [`PDFThreatAnalyzer`](PDFThreatAnalyzer.java)
 - **Path**: `src/main/java/threat/pdf/PDFThreatAnalyzer.java`
 - **Responsibilities**:
   - Traverses the PDF COS object graph starting from the Document Catalog and all Page objects down to a maximum depth of `MAX_COS_GRAPH_DEPTH = 256` and budget of `MAX_COS_OBJECTS = 200,000`.
@@ -39,7 +39,7 @@ flowchart TD
 
 ---
 
-### 2. [`PDFEmbeddedPayloadInspector`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/pdf/PDFEmbeddedPayloadInspector.java)
+### 2. [`PDFEmbeddedPayloadInspector`](PDFEmbeddedPayloadInspector.java)
 - **Path**: `src/main/java/threat/pdf/PDFEmbeddedPayloadInspector.java`
 - **Responsibilities**:
   - Locates all embedded file streams inside `/Filespec/EF` dictionaries.
@@ -51,7 +51,7 @@ flowchart TD
 
 ---
 
-### 3. [`PDFStreamThreatInspector`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/pdf/PDFStreamThreatInspector.java)
+### 3. [`PDFStreamThreatInspector`](PDFStreamThreatInspector.java)
 - **Path**: `src/main/java/threat/pdf/PDFStreamThreatInspector.java`
 - **Responsibilities**:
   - Inspects decoded stream bytes across the document catalog, page tree, and **the entire xref object table pool** (`cosDocument.getXrefTable()`).
@@ -65,7 +65,7 @@ flowchart TD
 
 ---
 
-### 4. [`PDFSecuritySurfaceVerifier`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/pdf/PDFSecuritySurfaceVerifier.java)
+### 4. [`PDFSecuritySurfaceVerifier`](PDFSecuritySurfaceVerifier.java)
 - **Path**: `src/main/java/threat/pdf/PDFSecuritySurfaceVerifier.java`
 - **Responsibilities**:
   - Independent post-reconstruction verifier that re-parses the newly written PDF.
@@ -75,7 +75,7 @@ flowchart TD
 
 ---
 
-### 5. [`PDFSecurityPolicy`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/pdf/PDFSecurityPolicy.java)
+### 5. [`PDFSecurityPolicy`](PDFSecurityPolicy.java)
 - **Path**: `src/main/java/threat/pdf/PDFSecurityPolicy.java`
 - **Constants**:
   - `MAX_INPUT_BYTES = 200 MB`

@@ -6,7 +6,7 @@ The `sanitization.pdf` package contains the PDF disarming engine for DocShield C
 
 ## 1. Architectural Role
 
-Unlike OOXML formats which are reconstructed from ZIP-packaged XML parts, PDF documents are processed by loading the document object graph into Apache PDFBox ([`PDDocument`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/sanitization/pdf/PDFThreatSanitizer.java)), mutating COS dictionaries and arrays in memory, and serializing a completely new PDF file to disk.
+Unlike OOXML formats which are reconstructed from ZIP-packaged XML parts, PDF documents are processed by loading the document object graph into Apache PDFBox ([`PDDocument`](PDFThreatSanitizer.java)), mutating COS dictionaries and arrays in memory, and serializing a completely new PDF file to disk.
 
 The PDF sanitizer removes active execution surfaces, arbitrary file attachments, active multimedia, and digital signatures (which are inherently invalidated by CDR transformation), while preserving visual layout, text streams, font resources, vector graphics, and standard benign hyperlinks.
 
@@ -31,15 +31,15 @@ The PDF sanitizer removes active execution surfaces, arbitrary file attachments,
 ## 3. Workflow Inside `PDFCDRProcessor`
 
 1. Input validation checks file existence, regular file status, and size limit (`MAX_INPUT_BYTES = 200 MB`).
-2. Apache PDFBox [`Loader.loadPDF`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/processing/pdf/PDFCDRProcessor.java) parses the document object graph. Page count limit checked (`MAX_PAGES = 10,000`).
+2. Apache PDFBox [`Loader.loadPDF`](..\..\processing\pdf\PDFCDRProcessor.java) parses the document object graph. Page count limit checked (`MAX_PAGES = 10,000`).
 3. Multi-pass security analysis is performed:
-   - [`PDFThreatAnalyzer`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/pdf/PDFThreatAnalyzer.java) analyzes catalog, name trees, page trees, actions, and annotations.
-   - [`PDFEmbeddedPayloadInspector`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/pdf/PDFEmbeddedPayloadInspector.java) inspects raw bytes of embedded attachments.
+   - [`PDFThreatAnalyzer`](..\..\threat\pdf\PDFThreatAnalyzer.java) analyzes catalog, name trees, page trees, actions, and annotations.
+   - [`PDFEmbeddedPayloadInspector`](..\..\threat\pdf\PDFEmbeddedPayloadInspector.java) inspects raw bytes of embedded attachments.
 4. If clean: original file is copied byte-for-byte with SHA-256 verification (`CDRFileUtil.copyOriginal`).
-5. If actionable findings exist: [`PDFThreatSanitizer.sanitize`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/sanitization/pdf/PDFThreatSanitizer.java) mutates the loaded `PDDocument`.
+5. If actionable findings exist: [`PDFThreatSanitizer.sanitize`](PDFThreatSanitizer.java) mutates the loaded `PDDocument`.
 6. Output is written first to an isolated temporary file (`.docshield-pdf-*.tmp`) and atomically renamed (`ATOMIC_MOVE` or replace) upon successful completion (`document.setAllSecurityToBeRemoved(true)` + `document.save()`).
 7. The written output is re-loaded from disk and verified independently:
-   - [`PDFIntegrityValidator`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/validation/pdf/PDFIntegrityValidator.java) verifies page structures, media boxes, resources, and catalog resolution.
-   - [`PDFThreatAnalyzer`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/pdf/PDFThreatAnalyzer.java) re-analyzes the reconstructed PDF.
-   - [`PDFSecuritySurfaceVerifier`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/pdf/PDFSecuritySurfaceVerifier.java) performs strict low-level COS object-pool scanning.
+   - [`PDFIntegrityValidator`](..\..\validation\pdf\PDFIntegrityValidator.java) verifies page structures, media boxes, resources, and catalog resolution.
+   - [`PDFThreatAnalyzer`](..\..\threat\pdf\PDFThreatAnalyzer.java) re-analyzes the reconstructed PDF.
+   - [`PDFSecuritySurfaceVerifier`](..\..\threat\pdf\PDFSecuritySurfaceVerifier.java) performs strict low-level COS object-pool scanning.
 8. If residual threats remain or integrity fails, the output file is deleted and the input is quarantined.

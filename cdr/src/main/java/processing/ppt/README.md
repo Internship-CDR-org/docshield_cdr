@@ -38,9 +38,9 @@ Legacy .ppt Input
 
 ## 2. Core Implementation: `PPTCDRProcessor`
 
-- [`PPTCDRProcessor`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/processing/ppt/PPTCDRProcessor.java) implements [`CDRProcessor`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/processing/common/CDRProcessor.java).
-- Performs pre-conversion threat analysis via [`PPTThreatAnalyzer`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/ppt/PPTThreatAnalyzer.java).
-- Executes sandboxed conversion to PPTX via [`PPTToPPTXConverter.convert`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/parsing/ppt/PPTToPPTXConverter.java) and [`LegacyOfficeConverter`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/parsing/legacy/LegacyOfficeConverter.java).
-- Processes converted artifact through [`PPTXCDRProcessor.process(converted, output, false)`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/processing/pptx/PPTXCDRProcessor.java).
+- [`PPTCDRProcessor`](PPTCDRProcessor.java) implements [`CDRProcessor`](..\common\CDRProcessor.java).
+- Performs pre-conversion threat analysis via [`PPTThreatAnalyzer`](..\..\threat\ppt\PPTThreatAnalyzer.java).
+- Executes sandboxed conversion to PPTX via [`PPTToPPTXConverter.convert`](..\..\parsing\ppt\PPTToPPTXConverter.java) and [`LegacyOfficeConverter`](..\..\parsing\legacy\LegacyOfficeConverter.java).
+- Processes converted artifact through [`PPTXCDRProcessor.process(converted, output, false)`](..\pptx\PPTXCDRProcessor.java).
 - Guarantees complete temporary workspace removal in a `finally` block.
 - Emits a sanitized, verified modern `.pptx` presentation.

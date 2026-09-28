@@ -11,7 +11,7 @@ The `security.sandbox` package provides host-level and process-level isolation c
 
 ## Core Classes
 
-### 1. [`SubprocessSandbox`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/security/sandbox/SubprocessSandbox.java)
+### 1. [`SubprocessSandbox`](SubprocessSandbox.java)
 - **Path**: `src/main/java/security/sandbox/SubprocessSandbox.java`
 - **Purpose**: Executes external programs (such as headless LibreOffice for legacy DOC/PPT/XLS conversion) inside a resource-constrained, isolated jail.
 - **Key Responsibilities**:
@@ -28,11 +28,11 @@ The `security.sandbox` package provides host-level and process-level isolation c
   - **Periodic Resource Monitoring**: Spawns a dedicated background monitor (`ScheduledExecutorService`) that samples the output workspace directory size every 250 milliseconds. If the generated output exceeds `maxOutputBytes` (e.g., 200 MB), the process is immediately killed to prevent disk exhaustion attacks.
   - **Bounded Output Collection**: Uses a background reader thread with a bounded buffer (`MAX_PROCESS_OUTPUT_BYTES = 64 KB`) to capture diagnostics without risking JVM heap exhaustion.
   - **Process-Tree Termination (`destroyProcessTree`)**: Traverses `ProcessHandle.descendants()` to forcibly terminate all spawned child/sub-processes before destroying the root process.
-- **Used by**: [`LegacyOfficeConverter`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/parsing/legacy/LegacyOfficeConverter.java) for all legacy binary document conversions.
+- **Used by**: [`LegacyOfficeConverter`](..\..\parsing\legacy\LegacyOfficeConverter.java) for all legacy binary document conversions.
 
 ---
 
-### 2. [`PathSandbox`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/security/sandbox/PathSandbox.java)
+### 2. [`PathSandbox`](PathSandbox.java)
 - **Path**: `src/main/java/security/sandbox/PathSandbox.java`
 - **Purpose**: Validates paths and ZIP archive entries against traversal, Zip Slip, and breakout vulnerabilities.
 - **Key Methods**:
@@ -44,11 +44,11 @@ The `security.sandbox` package provides host-level and process-level isolation c
     - Rejects directory traversal tokens (`../`, `..\`, `..`, `/..`, `\..`).
     - Rejects absolute paths (`/`, `\`, or drive letters like `C:`).
     - Rejects Windows Alternate Data Streams (ADS) and colon specifiers (e.g., `::$DATA` or `file:stream`).
-- **Used by**: [`OOXMLPackageReader`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/parsing/ooxml/OOXMLPackageReader.java), [`OOXMLIntegrityValidator`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/validation/ooxml/OOXMLIntegrityValidator.java), and archive handlers.
+- **Used by**: [`OOXMLPackageReader`](..\..\parsing\ooxml\OOXMLPackageReader.java), [`OOXMLIntegrityValidator`](..\..\validation\ooxml\OOXMLIntegrityValidator.java), and archive handlers.
 
 ---
 
-### 3. [`SecureXmlFactory`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/security/sandbox/SecureXmlFactory.java)
+### 3. [`SecureXmlFactory`](SecureXmlFactory.java)
 - **Path**: `src/main/java/security/sandbox/SecureXmlFactory.java`
 - **Purpose**: Creates hardened DOM/SAX `DocumentBuilderFactory` and `DocumentBuilder` instances to defend against XML-based attacks.
 - **Security Protections**:
@@ -61,7 +61,7 @@ The `security.sandbox` package provides host-level and process-level isolation c
   - `XMLConstants.ACCESS_EXTERNAL_SCHEMA = ""` (disallows all external schema access)
   - `factory.setXIncludeAware(false)` (disables XInclude processing)
   - `factory.setExpandEntityReferences(false)` (mitigates entity expansion bombs)
-- **Used by**: [`OOXMLPackageReader`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/parsing/ooxml/OOXMLPackageReader.java) for `[Content_Types].xml`, `.rels`, and all XML package parts.
+- **Used by**: [`OOXMLPackageReader`](..\..\parsing\ooxml\OOXMLPackageReader.java) for `[Content_Types].xml`, `.rels`, and all XML package parts.
 
 ---
 
@@ -71,11 +71,11 @@ DocShield includes specialized scripts under `scripts/` to run the entire CDR en
 
 | Script | Platform | Isolation Mechanism | Key Security Flags |
 |---|---|---|---|
-| [`scripts/sandbox-run.sh`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/scripts/sandbox-run.sh) | Linux / WSL2 | Bubblewrap (`bwrap`) | `--unshare-all`, `--ro-bind / /`, `--tmpfs /tmp`, Read-Only input mount, isolated ephemeral scratchpad, isolated writable output |
-| [`scripts/run-docker-sandbox.sh`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/scripts/run-docker-sandbox.sh) | Linux / macOS / Docker | Docker Container | `--network none`, `--read-only`, `--user 10001:10001`, `--cap-drop ALL`, `--security-opt no-new-privileges:true`, `--memory 1024m`, `--cpus 2.0`, `--pids-limit 150`, `--tmpfs /tmp:rw,noexec,nosuid,size=256m` |
-| [`scripts/sandbox-run.ps1`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/scripts/sandbox-run.ps1) | Windows PowerShell | Multi-Tier Dispatcher | Auto-detects: 1. WSL2 Kernel Sandbox (`bwrap`) → 2. Docker Sandbox (`run-docker-sandbox.ps1`) → 3. Windows Native Process Isolation (Restricted temp jail, read-only copy) |
-| [`scripts/sandbox-run.bat`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/scripts/sandbox-run.bat) | Windows CMD | PowerShell Wrapper | Invokes `sandbox-run.ps1` with `-ExecutionPolicy Bypass` |
-| [`scripts/run-docker-sandbox.ps1`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/scripts/run-docker-sandbox.ps1) | Windows Docker | Docker Container | Windows PowerShell driver for hardened Docker sandbox execution |
+| [`scripts/sandbox-run.sh`](..\..\..\..\..\scripts\sandbox-run.sh) | Linux / WSL2 | Bubblewrap (`bwrap`) | `--unshare-all`, `--ro-bind / /`, `--tmpfs /tmp`, Read-Only input mount, isolated ephemeral scratchpad, isolated writable output |
+| [`scripts/run-docker-sandbox.sh`](..\..\..\..\..\scripts\run-docker-sandbox.sh) | Linux / macOS / Docker | Docker Container | `--network none`, `--read-only`, `--user 10001:10001`, `--cap-drop ALL`, `--security-opt no-new-privileges:true`, `--memory 1024m`, `--cpus 2.0`, `--pids-limit 150`, `--tmpfs /tmp:rw,noexec,nosuid,size=256m` |
+| [`scripts/sandbox-run.ps1`](..\..\..\..\..\scripts\sandbox-run.ps1) | Windows PowerShell | Multi-Tier Dispatcher | Auto-detects: 1. WSL2 Kernel Sandbox (`bwrap`) → 2. Docker Sandbox (`run-docker-sandbox.ps1`) → 3. Windows Native Process Isolation (Restricted temp jail, read-only copy) |
+| [`scripts/sandbox-run.bat`](..\..\..\..\..\scripts\sandbox-run.bat) | Windows CMD | PowerShell Wrapper | Invokes `sandbox-run.ps1` with `-ExecutionPolicy Bypass` |
+| [`scripts/run-docker-sandbox.ps1`](..\..\..\..\..\scripts\run-docker-sandbox.ps1) | Windows Docker | Docker Container | Windows PowerShell driver for hardened Docker sandbox execution |
 
 ---
 

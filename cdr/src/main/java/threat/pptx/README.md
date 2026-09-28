@@ -10,20 +10,20 @@ PowerPoint presentations can carry active execution vectors via PresentationML i
 
 ## Key Classes & Architecture
 
-### 1. [`PPTXThreatAnalyzer`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/pptx/PPTXThreatAnalyzer.java)
+### 1. [`PPTXThreatAnalyzer`](PPTXThreatAnalyzer.java)
 - **Path**: `src/main/java/threat/pptx/PPTXThreatAnalyzer.java`
 - **Responsibilities**:
-  - Runs [`OOXMLThreatAnalyzer`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/ooxml/OOXMLThreatAnalyzer.java) for package-wide threats.
-  - Runs [`OLEAnalyzer`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/pptx/OLEAnalyzer.java) for nested Compound Document payloads.
+  - Runs [`OOXMLThreatAnalyzer`](..\ooxml\OOXMLThreatAnalyzer.java) for package-wide threats.
+  - Runs [`OLEAnalyzer`](OLEAnalyzer.java) for nested Compound Document payloads.
   - Inspects `ppt/ctrlprops/` for ActiveX control persistence data.
 
 ### 2. Supporting PPTX Analyzers & Payload Tools
-- **[`Ole10NativeAnalyzer`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/pptx/Ole10NativeAnalyzer.java)**: Parses OLE `Ole10Native` binary records to extract filename, execution command, and embedded file bytes.
-- **[`PayloadIdentifier`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/pptx/PayloadIdentifier.java)**: Identifies payload format from byte content headers (`MZ`, `\x7fELF`, `%PDF-`, `PK\x03\x04`, script keywords) and file extensions (`.bat`, `.cmd`, `.ps1`, `.vbs`, `.js`, `.pdf`, `.svg`).
-- **[`PayloadFingerprint`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/pptx/PayloadFingerprint.java)**: Computes SHA-256 digests of extracted embedded payloads.
-- **[`SVGAnalyzer`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/pptx/SVGAnalyzer.java)**: Inspects SVG parts for `<script>`, event handlers (`onload`, `onclick`), external resources, and script URIs.
-- **[`EmbeddedObjectAnalyzer`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/pptx/EmbeddedObjectAnalyzer.java)**: Evaluates embedded package objects.
-- **[`RelationshipAnalyzer`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/pptx/RelationshipAnalyzer.java)**: Audits PPTX-specific relationship targets and types.
+- **[`Ole10NativeAnalyzer`](Ole10NativeAnalyzer.java)**: Parses OLE `Ole10Native` binary records to extract filename, execution command, and embedded file bytes.
+- **[`PayloadIdentifier`](PayloadIdentifier.java)**: Identifies payload format from byte content headers (`MZ`, `\x7fELF`, `%PDF-`, `PK\x03\x04`, script keywords) and file extensions (`.bat`, `.cmd`, `.ps1`, `.vbs`, `.js`, `.pdf`, `.svg`).
+- **[`PayloadFingerprint`](PayloadFingerprint.java)**: Computes SHA-256 digests of extracted embedded payloads.
+- **[`SVGAnalyzer`](SVGAnalyzer.java)**: Inspects SVG parts for `<script>`, event handlers (`onload`, `onclick`), external resources, and script URIs.
+- **[`EmbeddedObjectAnalyzer`](EmbeddedObjectAnalyzer.java)**: Evaluates embedded package objects.
+- **[`RelationshipAnalyzer`](RelationshipAnalyzer.java)**: Audits PPTX-specific relationship targets and types.
 
 ---
 

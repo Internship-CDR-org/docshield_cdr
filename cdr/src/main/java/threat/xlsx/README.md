@@ -10,11 +10,11 @@ Excel spreadsheets possess powerful calculation and external integration capabil
 
 ## Key Classes & Architecture
 
-### [`XLSXThreatAnalyzer`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/xlsx/XLSXThreatAnalyzer.java)
+### [`XLSXThreatAnalyzer`](XLSXThreatAnalyzer.java)
 - **Path**: `src/main/java/threat/xlsx/XLSXThreatAnalyzer.java`
 - **Delegation Flow**:
-  1. Invokes [`OOXMLThreatAnalyzer`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/ooxml/OOXMLThreatAnalyzer.java) for common package-level checks.
-  2. Invokes [`OLEAnalyzer`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/ooxml/OLEAnalyzer.java) for embedded OLE payloads.
+  1. Invokes [`OOXMLThreatAnalyzer`](..\ooxml\OOXMLThreatAnalyzer.java) for common package-level checks.
+  2. Invokes [`OLEAnalyzer`](..\ooxml\OLEAnalyzer.java) for embedded OLE payloads.
   3. Scans worksheet `<f>` elements and `xl/workbook.xml` `<definedName>` formulas.
   4. Scans external link structures (`xl/externallinks/`), data connections (`xl/connections.xml`), and query tables (`xl/querytables/`).
 

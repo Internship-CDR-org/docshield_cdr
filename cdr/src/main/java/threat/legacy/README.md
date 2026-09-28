@@ -12,13 +12,13 @@ Legacy binary files are structured as OLE2 Compound Document files. When an untr
 
 If DocShield only inspected the converted OOXML file, it would incorrectly report the original threat as "absent", giving a false impression that the source document was benign.
 
-Therefore, DocShield executes [`LegacyOfficeThreatAnalyzer`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/legacy/LegacyOfficeThreatAnalyzer.java) **directly on the legacy binary file first**, cataloging all pre-existing threats before initiating sandboxed conversion.
+Therefore, DocShield executes [`LegacyOfficeThreatAnalyzer`](LegacyOfficeThreatAnalyzer.java) **directly on the legacy binary file first**, cataloging all pre-existing threats before initiating sandboxed conversion.
 
 ---
 
 ## Key Classes
 
-### [`LegacyOfficeThreatAnalyzer`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/legacy/LegacyOfficeThreatAnalyzer.java)
+### [`LegacyOfficeThreatAnalyzer`](LegacyOfficeThreatAnalyzer.java)
 - **Path**: `src/main/java/threat/legacy/LegacyOfficeThreatAnalyzer.java`
 - **Capabilities**:
   - **OLE Storage Traversal**: Scans OLE2 directories and streams using Apache POI `POIFSFileSystem` for VBA projects (`vba`, `macros`, `_vba_project`, `dir`, `project`, `projectwm`).

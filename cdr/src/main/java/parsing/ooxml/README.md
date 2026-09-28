@@ -8,7 +8,7 @@ The `parsing.ooxml` package provides the secure Open Packaging Conventions (OPC 
 
 Modern Microsoft Office documents are ZIP archives containing XML parts, binary resources, relationship graphs (`.rels`), and a root content type registry (`[Content_Types].xml`). Ingesting untrusted ZIP packages directly with standard libraries exposes the host to ZIP bombs, directory traversal overwrites (Zip Slip), XML External Entity (XXE) attacks, and duplicate entry confusion.
 
-[`OOXMLPackageReader`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/parsing/ooxml/OOXMLPackageReader.java) implements a hardened, stream-verified reader that builds an in-memory [`OOXMLPackage`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/model/ooxml/OOXMLPackage.java) data structure under strict resource and safety constraints.
+[`OOXMLPackageReader`](OOXMLPackageReader.java) implements a hardened, stream-verified reader that builds an in-memory [`OOXMLPackage`](..\..\model\ooxml\OOXMLPackage.java) data structure under strict resource and safety constraints.
 
 ---
 
@@ -25,13 +25,13 @@ Modern Microsoft Office documents are ZIP archives containing XML parts, binary 
 ## 3. Structural Protections in `OOXMLPackageReader`
 
 1. **Path Safety & Traversal Prevention**:
-   - Every ZIP entry name is verified through [`PathSandbox.isSafeZipEntryName`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/security/sandbox/PathSandbox.java).
+   - Every ZIP entry name is verified through [`PathSandbox.isSafeZipEntryName`](..\..\security\sandbox\PathSandbox.java).
    - Rejects entries with path traversal tokens (`..`), leading slashes (`/`), drive prefixes (`C:`), Windows backslashes (`\`), or null bytes (`\0`).
 2. **Duplicate Entry Rejection**:
    - Tracks seen entry names (normalized case-insensitively).
    - Throws an `IOException` if duplicate ZIP entries are detected, eliminating ZIP parser differential attacks.
 3. **Hardened XML Deserialization**:
-   - All relationship files (`.rels`) and `[Content_Types].xml` are parsed using [`SecureXmlFactory`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/security/sandbox/SecureXmlFactory.java) `DocumentBuilderFactory`.
+   - All relationship files (`.rels`) and `[Content_Types].xml` are parsed using [`SecureXmlFactory`](..\..\security\sandbox\SecureXmlFactory.java) `DocumentBuilderFactory`.
    - `DOCTYPE` declarations are disallowed (`disallow-doctype-decl = true`).
    - External entities and DTDs are disabled (`external-general-entities = false`, `external-parameter-entities = false`).
    - XInclude and entity expansion are disabled.

@@ -16,7 +16,7 @@ public interface CDRProcessor {
 
 ### `CDRResult` (Result Model)
 Immutable data container capturing complete processing state:
-- **`findings`**: List of initial [`SecurityFinding`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/common/SecurityFinding.java) objects discovered during first-pass analysis.
+- **`findings`**: List of initial [`SecurityFinding`](..\..\threat\common\SecurityFinding.java) objects discovered during first-pass analysis.
 - **`actions`**: List of human-readable disarming and sanitization actions performed.
 - **`outputFile`**: Final path to the generated output file.
 - **`reconstructionSuccessful`**: Boolean flag confirming physical file generation.

@@ -6,7 +6,7 @@ The `sanitization.docx` package provides the WordprocessingML sanitization entry
 
 ## 1. Architectural Role
 
-[`DOCXThreatSanitizer`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/sanitization/docx/DOCXThreatSanitizer.java) delegates package-level mutation to the shared [`OOXMLThreatSanitizer`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/sanitization/common/OOXMLThreatSanitizer.java). This ensures that DOCX documents benefit from unified graph-closure sanitization, DTD stripping, and relationship disarming, while applying Word-specific field instruction disarming.
+[`DOCXThreatSanitizer`](DOCXThreatSanitizer.java) delegates package-level mutation to the shared [`OOXMLThreatSanitizer`](..\common\OOXMLThreatSanitizer.java). This ensures that DOCX documents benefit from unified graph-closure sanitization, DTD stripping, and relationship disarming, while applying Word-specific field instruction disarming.
 
 ---
 
@@ -23,16 +23,16 @@ The `sanitization.docx` package provides the WordprocessingML sanitization entry
 | `DANGEROUS_ACTION` | `MACROBUTTON` fields | Strips `MACROBUTTON` field instructions from XML runs. | Macro invocation click triggers removed. |
 | `AUTO_UPDATE_FIELDS` | `word/settings.xml` | Removes `<w:updateFields w:val="true"/>` setting. | Prevents Word from auto-evaluating fields on document open. |
 | `EXTERNAL_CONNECTION` | `word/settings.xml` | Strips `<w:mailMerge>` data source blocks. | Prevents exfiltration via mail merge queries. |
-| `EMBEDDED_PACKAGE` / `OLE_OBJECT` | `word/embeddings/` | Deep recursive CDR via [`RecursiveOOXMLSanitizer`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/sanitization/common/RecursiveOOXMLSanitizer.java) if OOXML; deletes part if unsafe or non-OOXML. | Safe embedded sheets preserved; malicious payloads removed. |
+| `EMBEDDED_PACKAGE` / `OLE_OBJECT` | `word/embeddings/` | Deep recursive CDR via [`RecursiveOOXMLSanitizer`](..\common\RecursiveOOXMLSanitizer.java) if OOXML; deletes part if unsafe or non-OOXML. | Safe embedded sheets preserved; malicious payloads removed. |
 | `MALICIOUS_XML` | Any XML part | Strips `<!DOCTYPE>` and `<!ENTITY>` declarations; removes custom entity references. | Neutralizes XML External Entity (XXE) and billion laughs bombs. |
 
 ---
 
 ## 3. Workflow Inside `DOCXCDRProcessor`
 
-1. [`DOCXCDRProcessor`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/processing/docx/DOCXCDRProcessor.java) parses package into [`OOXMLPackage`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/model/ooxml/OOXMLPackage.java) and runs [`DOCXThreatAnalyzer`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/docx/DOCXThreatAnalyzer.java).
+1. [`DOCXCDRProcessor`](..\..\processing\docx\DOCXCDRProcessor.java) parses package into [`OOXMLPackage`](..\..\model\ooxml\OOXMLPackage.java) and runs [`DOCXThreatAnalyzer`](..\..\threat\docx\DOCXThreatAnalyzer.java).
 2. If clean, byte-for-byte original copy is preserved (SHA-256 identity verified).
 3. If threats exist, `DOCXThreatSanitizer.sanitize(packageData, findings)` executes in-place disarming.
-4. [`RecursiveOOXMLSanitizer.sanitizeEmbeddedPackages`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/sanitization/common/RecursiveOOXMLSanitizer.java) sanitizes nested packages.
-5. Package is reconstructed via [`OOXMLPackageWriter`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/reconstruction/OOXMLPackageWriter.java).
-6. Post-reconstruction hardening loop re-reads output, runs [`OOXMLIntegrityValidator`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/validation/ooxml/OOXMLIntegrityValidator.java), and re-analyzes up to 3 passes before release.
+4. [`RecursiveOOXMLSanitizer.sanitizeEmbeddedPackages`](..\common\RecursiveOOXMLSanitizer.java) sanitizes nested packages.
+5. Package is reconstructed via [`OOXMLPackageWriter`](..\..\reconstruction\OOXMLPackageWriter.java).
+6. Post-reconstruction hardening loop re-reads output, runs [`OOXMLIntegrityValidator`](..\..\validation\ooxml\OOXMLIntegrityValidator.java), and re-analyzes up to 3 passes before release.

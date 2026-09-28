@@ -19,11 +19,11 @@ DocShield inspects document packages to detect **active capabilities**—feature
 
 ## Package Structure
 
-- [`threat.common`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/common/README.md): Common classifications, threat types, severities, finding representations, and analyzer interfaces.
-- [`threat.ooxml`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/ooxml/README.md): Shared structural threat analysis and OLE compound document analysis for DOCX, PPTX, and XLSX.
-- [`threat.docx`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/docx/README.md): Word-specific threat detection (Word fields, DDE, MACROBUTTON, attached templates, altChunk, settings).
-- [`threat.pptx`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/pptx/README.md): PowerPoint-specific threat detection (PresentationML interactive actions, ctrlProps, SVG active content, embedded payloads).
-- [`threat.xlsx`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/xlsx/README.md): Excel-specific threat detection (XLM macro sheets, DDE formulas, external workbook links, active formula functions, data connections).
-- [`threat.legacy`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/legacy/README.md): Pre-conversion threat analysis for legacy binary formats (DOC, PPT, XLS).
-- [`threat.rtf`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/rtf/README.md): RTF threat analyzer for embedded objects, Equation Editor exploits, DDE, and dangerous hyperlinks.
-- [`threat.pdf`](file:///D:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/pdf/README.md): Multi-pass PDF security analyzer, embedded payload inspector, decoded stream inspector, and post-reconstruction surface verifier.
+- [`threat.common`](common\README.md): Common classifications, threat types, severities, finding representations, and analyzer interfaces.
+- [`threat.ooxml`](ooxml\README.md): Shared structural threat analysis and OLE compound document analysis for DOCX, PPTX, and XLSX.
+- [`threat.docx`](docx\README.md): Word-specific threat detection (Word fields, DDE, MACROBUTTON, attached templates, altChunk, settings).
+- [`threat.pptx`](pptx\README.md): PowerPoint-specific threat detection (PresentationML interactive actions, ctrlProps, SVG active content, embedded payloads).
+- [`threat.xlsx`](xlsx\README.md): Excel-specific threat detection (XLM macro sheets, DDE formulas, external workbook links, active formula functions, data connections).
+- [`threat.legacy`](legacy\README.md): Pre-conversion threat analysis for legacy binary formats (DOC, PPT, XLS).
+- [`threat.rtf`](rtf\README.md): RTF threat analyzer for embedded objects, Equation Editor exploits, DDE, and dangerous hyperlinks.
+- [`threat.pdf`](pdf\README.md): Multi-pass PDF security analyzer, embedded payload inspector, decoded stream inspector, and post-reconstruction surface verifier.

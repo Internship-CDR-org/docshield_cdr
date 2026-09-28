@@ -9,15 +9,15 @@ The `parsing.legacy` package implements the secure boundary for converting untru
 Legacy Office files (Word 97-2003, PowerPoint 97-2003, Excel 97-2003) use proprietary, complex binary structures (OLE2 Compound File Binary Format / BIFF8). In-process parsing of untrusted legacy binaries presents a high risk of memory corruption vulnerabilities and parser exploitation.
 
 DocShield strictly isolates legacy processing:
-1. **Pre-Conversion Threat Analysis**: Input binaries are analyzed first by dedicated legacy analyzers ([`DOCThreatAnalyzer`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/doc/DOCThreatAnalyzer.java), [`PPTThreatAnalyzer`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/ppt/PPTThreatAnalyzer.java), [`XLSThreatAnalyzer`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/threat/xls/XLSThreatAnalyzer.java)) to catalog any active macros, OLE objects, or DDE links.
-2. **Hardened Out-of-Process Conversion**: The document is converted to modern OOXML via an isolated LibreOffice instance orchestrated by [`LegacyOfficeConverter`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/parsing/legacy/LegacyOfficeConverter.java) and [`SubprocessSandbox`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/security/sandbox/SubprocessSandbox.java).
+1. **Pre-Conversion Threat Analysis**: Input binaries are analyzed first by dedicated legacy analyzers ([`DOCThreatAnalyzer`](..\..\threat\doc\DOCThreatAnalyzer.java), [`PPTThreatAnalyzer`](..\..\threat\ppt\PPTThreatAnalyzer.java), [`XLSThreatAnalyzer`](..\..\threat\xls\XLSThreatAnalyzer.java)) to catalog any active macros, OLE objects, or DDE links.
+2. **Hardened Out-of-Process Conversion**: The document is converted to modern OOXML via an isolated LibreOffice instance orchestrated by [`LegacyOfficeConverter`](LegacyOfficeConverter.java) and [`SubprocessSandbox`](..\..\security\sandbox\SubprocessSandbox.java).
 3. **Downstream Modern CDR**: The converted OOXML package is subsequently processed by modern CDR engines (`DOCXCDRProcessor`, `PPTXCDRProcessor`, `XLSXCDRProcessor`).
 
 ---
 
 ## 2. Core Implementation: `LegacyOfficeConverter`
 
-[`LegacyOfficeConverter`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/parsing/legacy/LegacyOfficeConverter.java) is the shared, hardened execution driver for legacy conversions.
+[`LegacyOfficeConverter`](LegacyOfficeConverter.java) is the shared, hardened execution driver for legacy conversions.
 
 ### Key Security Controls
 
@@ -34,7 +34,7 @@ DocShield strictly isolates legacy processing:
    - Enforces headless mode flags: `--headless --nologo --nodefault --norestore --nolockcheck`.
 
 3. **Subprocess Sandboxing (`SubprocessSandbox`)**:
-   - Executes the conversion command through [`SubprocessSandbox.execute`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/security/sandbox/SubprocessSandbox.java).
+   - Executes the conversion command through [`SubprocessSandbox.execute`](..\..\security\sandbox\SubprocessSandbox.java).
    - Monitors the output directory every 250ms; terminates the entire process tree if output exceeds `maxOutputBytes`.
    - Terminates process tree if execution exceeds the timeout (`60s`).
    - Caps stdout/stderr capture at 64 KB to prevent buffer exhaustion.
@@ -48,6 +48,6 @@ DocShield strictly isolates legacy processing:
 ## 3. Format Converters
 
 The format-specific converter classes provide clean facade methods:
-- [`DOCToDOCXConverter`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/parsing/doc/DOCToDOCXConverter.java): Invokes `LegacyOfficeConverter.convert(file, "DOC", "docx")`.
-- [`PPTToPPTXConverter`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/parsing/ppt/PPTToPPTXConverter.java): Invokes `LegacyOfficeConverter.convert(file, "PPT", "pptx")`.
-- [`XLSToXLSXConverter`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/parsing/xls/XLSToXLSXConverter.java): Invokes `LegacyOfficeConverter.convert(file, "XLS", "xlsx")`.
+- [`DOCToDOCXConverter`](..\doc\DOCToDOCXConverter.java): Invokes `LegacyOfficeConverter.convert(file, "DOC", "docx")`.
+- [`PPTToPPTXConverter`](..\ppt\PPTToPPTXConverter.java): Invokes `LegacyOfficeConverter.convert(file, "PPT", "pptx")`.
+- [`XLSToXLSXConverter`](..\xls\XLSToXLSXConverter.java): Invokes `LegacyOfficeConverter.convert(file, "XLS", "xlsx")`.

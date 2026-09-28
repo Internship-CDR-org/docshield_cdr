@@ -42,6 +42,6 @@ validation/
     └── PDFIntegrityValidator.java # PDFBox page tree, resource, and catalog validator
 ```
 
-- [`OOXMLIntegrityValidator`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/validation/ooxml/OOXMLIntegrityValidator.java): Validates reconstructed `DOCX`, `PPTX`, and `XLSX` packages to ensure no path traversals, duplicate part names, missing content type overrides, or dangling internal relationship targets exist.
-- [`RTFIntegrityValidator`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/validation/rtf/RTFIntegrityValidator.java): Validates reconstructed `RTF` files to ensure proper header magic, balanced group brace hierarchies, and successful semantic parser ingestion.
-- [`PDFIntegrityValidator`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/validation/pdf/PDFIntegrityValidator.java): Validates reconstructed `PDF` documents by forcing structural resolution of all pages, media boxes, resource dictionaries, annotation arrays, and catalog trees to detect serialization corruption.
+- [`OOXMLIntegrityValidator`](ooxml\OOXMLIntegrityValidator.java): Validates reconstructed `DOCX`, `PPTX`, and `XLSX` packages to ensure no path traversals, duplicate part names, missing content type overrides, or dangling internal relationship targets exist.
+- [`RTFIntegrityValidator`](rtf\RTFIntegrityValidator.java): Validates reconstructed `RTF` files to ensure proper header magic, balanced group brace hierarchies, and successful semantic parser ingestion.
+- [`PDFIntegrityValidator`](pdf\PDFIntegrityValidator.java): Validates reconstructed `PDF` documents by forcing structural resolution of all pages, media boxes, resource dictionaries, annotation arrays, and catalog trees to detect serialization corruption.

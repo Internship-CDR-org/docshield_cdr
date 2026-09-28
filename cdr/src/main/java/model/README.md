@@ -34,4 +34,4 @@ model/
 ## 2. Distinction: Physical Package Model vs Semantic IR
 
 - **`model.ooxml` (Physical Package Model)**: The primary data structure for CDR disarming and reconstruction. Operates on raw byte arrays, relationship graphs, and XML buffers without lossy abstraction.
-- **`model.common` (Semantic IR)**: A read-only representation extracted after CDR completion to drive human-readable audit reporting and structure summaries in [`ReportWriter`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/reporting/ReportWriter.java).
+- **`model.common` (Semantic IR)**: A read-only representation extracted after CDR completion to drive human-readable audit reporting and structure summaries in [`ReportWriter`](..\reporting\ReportWriter.java).

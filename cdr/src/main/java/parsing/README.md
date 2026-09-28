@@ -8,8 +8,8 @@ The `parsing` package contains the document ingest engines, physical OPC package
 
 DocShield separates **Physical Package Reading** from **Semantic Metadata Extraction**:
 
-1. **Physical Package Reading (`parsing.ooxml.OOXMLPackageReader`)**: Ingests raw ZIP archives into memory representations ([`OOXMLPackage`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/model/ooxml/OOXMLPackage.java), [`OOXMLPart`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/model/ooxml/OOXMLPart.java), [`OOXMLRelationship`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/model/ooxml/OOXMLRelationship.java)) with strict ZIP bomb defenses, traversal checks, and entity protections.
-2. **Semantic Model Extraction (`DocumentParser`)**: Traverses post-CDR output documents to extract human-readable metadata, text blocks, images, hyperlinks, and layout structures for the final [`DocumentModel`](file:///d:/CAIR/DOC%20SHIELD/DocShield/cdr/src/main/java/model/common/DocumentModel.java) report.
+1. **Physical Package Reading (`parsing.ooxml.OOXMLPackageReader`)**: Ingests raw ZIP archives into memory representations ([`OOXMLPackage`](..\model\ooxml\OOXMLPackage.java), [`OOXMLPart`](..\model\ooxml\OOXMLPart.java), [`OOXMLRelationship`](..\model\ooxml\OOXMLRelationship.java)) with strict ZIP bomb defenses, traversal checks, and entity protections.
+2. **Semantic Model Extraction (`DocumentParser`)**: Traverses post-CDR output documents to extract human-readable metadata, text blocks, images, hyperlinks, and layout structures for the final [`DocumentModel`](..\model\common\DocumentModel.java) report.
 3. **Sandboxed Legacy Conversion (`parsing.legacy`)**: Provides out-of-process conversion bridges from legacy binary formats (`DOC`, `PPT`, `XLS`) to modern OOXML.
 
 ---

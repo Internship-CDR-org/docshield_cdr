@@ -256,9 +256,28 @@ public final class SubprocessSandbox {
     public static void destroyProcessTree(Process p) {
         if (p == null) return;
         try {
-            p.toHandle().descendants().forEach(ProcessHandle::destroyForcibly);
+            List<ProcessHandle> descendants = p.toHandle().descendants().toList();
+            for (ProcessHandle ph : descendants) {
+                try {
+                    ph.destroyForcibly();
+                } catch (Exception ignored) { }
+            }
             p.destroyForcibly();
             p.waitFor(5, TimeUnit.SECONDS);
+            for (ProcessHandle ph : descendants) {
+                try {
+                    ph.onExit().get(2, TimeUnit.SECONDS);
+                } catch (Exception ignored) { }
+            }
+            try {
+                p.getInputStream().close();
+            } catch (Exception ignored) { }
+            try {
+                p.getOutputStream().close();
+            } catch (Exception ignored) { }
+            try {
+                p.getErrorStream().close();
+            } catch (Exception ignored) { }
         } catch (Exception ignored) { }
     }
 

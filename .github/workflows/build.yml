@@ -1,0 +1,44 @@
+name: DocShield Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Java 21 + Maven test suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Install runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libreoffice bubblewrap
+
+      - name: Run clean test suite
+        working-directory: cdr
+        run: mvn --batch-mode --no-transfer-progress clean test
+
+      - name: Verify no personal/manual samples are required by tests
+        working-directory: cdr
+        shell: bash
+        run: |
+          if grep -RInE 'samples/(Pardhu_|CRT_|Copy\.txt|JEE |KKD |Time-Management|DV Syllabus)' src/test/java; then
+            echo "ERROR: Automated tests reference personal/manual sample files."
+            exit 1
+          fi
